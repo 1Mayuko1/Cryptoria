@@ -4,6 +4,6 @@ const userCryptocurrenciesController = require('../controllers/UserCryptocurrenc
 
 router.post('/', userCryptocurrenciesController.create)
 router.get('/', userCryptocurrenciesController.getAll)
-router.get('/:id', userCryptocurrenciesController.getOneById)
+router.get('/:id', userCryptocurrenciesController.getAllById)
 
 module.exports = router
