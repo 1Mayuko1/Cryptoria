@@ -1,9 +1,10 @@
 import React, {createContext} from 'react';
 import { LogBox } from "react-native";
-import UserStore from './store/UserStore'
-import UserCryptoStore from "./store/userCryptoStore";
-import CryptoStore from "./store/cryptoStore";
+// import UserStore from './store/UserStore'
+// import UserCryptoStore from "./store/userCryptoStore";
+// import CryptoStore from "./store/cryptoStore";
 import AppContainer from "./AppContainer";
+import UserStore from "./store/userStore";
 
 LogBox.ignoreLogs([""]);
 

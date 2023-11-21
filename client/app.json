@@ -1,7 +1,7 @@
 {
   "expo": {
     "name": "client",
-    "slug": "client",
+    "slug": "cryptoria",
     "version": "1.0.0",
     "orientation": "portrait",
     "userInterfaceStyle": "light",
@@ -21,8 +21,12 @@
         "backgroundColor": "#ffffff"
       }
     },
-    "web": {
-
-    }
+    "web": {},
+    "extra": {
+      "eas": {
+        "projectId": "f1b33cff-ad39-4e32-b596-24d27eb1f4b1"
+      }
+    },
+    "owner": "vladuslavk"
   }
 }

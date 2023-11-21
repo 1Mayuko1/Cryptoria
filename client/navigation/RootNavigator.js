@@ -5,13 +5,14 @@ import Market from "../Pages/Market";
 import {NavigationContainer} from '@react-navigation/native';
 import {createStackNavigator} from '@react-navigation/stack';
 import {createMaterialBottomTabNavigator} from '@react-navigation/material-bottom-tabs';
-import {useScreenDimensions} from "../constants/helpers";
+import {colors, useScreenDimensions} from "../constants/helpers";
 import {View} from "react-native";
 import Icon from 'react-native-vector-icons/FontAwesome'
 import Cryptocurrency from "../Pages/Market/Cryptocurrency";
 import Login from "../Pages/Login";
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import Registration from "../Pages/Registration";
+import LoadingScreen from "../Pages/Loading";
 
 const Stack = createStackNavigator();
 const Tab = createMaterialBottomTabNavigator();
@@ -56,12 +57,12 @@ const AuthenticatedStack = () => (
         shifting={true}
         sceneAnimationEnabled={true}
         activeTintColor="#000000"
-        initialRouteName="Market"
+        initialRouteName="Portfolio"
         activeColor="#fff"
         inactiveColor="#000"
         labelStyle={{ fontSize: 12 }}
         barStyle={{
-            backgroundColor: '#000',
+            backgroundColor: colors.mainPurple,
         }}
     >
         <Tab.Screen
@@ -116,23 +117,28 @@ const AuthenticatedStack = () => (
 )
 
 const RootNavigator = () => {
-    const screenData = useScreenDimensions()
+    const screenData = useScreenDimensions();
     const [isAuthenticated, setIsAuthenticated] = useState(false);
+    const [loading, setLoading] = useState(true);
 
     useEffect(() => {
         const checkToken = async () => {
             try {
                 const storedToken = await AsyncStorage.getItem('token');
-                if (storedToken) {
-                    setIsAuthenticated(true);
-                }
+                console.log('Token:', storedToken);
+                setIsAuthenticated(!!storedToken);
             } catch (e) {
                 console.error('Failed to get token from AsyncStorage', e);
             }
+            setLoading(false);
         };
 
         checkToken();
     }, []);
+
+    if (loading) {
+        return <LoadingScreen />;
+    }
 
     return (
         <NavigationContainer theme={{colors: {secondaryContainer: 'transparent'}}}>
@@ -143,5 +149,6 @@ const RootNavigator = () => {
         </NavigationContainer>
     );
 }
+
 
 export default RootNavigator

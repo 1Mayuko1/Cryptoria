@@ -105,7 +105,7 @@ const Registration = ({navigation}) => {
                                 style={{marginRight: 10}}
                                 name='mail-forward'
                                 size={24}
-                                color='black'
+                                color={colors.mainBlack}
                             />
                         }
                     />
@@ -120,7 +120,7 @@ const Registration = ({navigation}) => {
                                 style={{marginRight: 10}}
                                 name='lock'
                                 size={24}
-                                color='black'
+                                color={colors.mainBlack}
                             />
                         }
                     />
@@ -135,7 +135,7 @@ const Registration = ({navigation}) => {
                                 style={{marginRight: 10}}
                                 name='lock'
                                 size={24}
-                                color='black'
+                                color={colors.mainBlack}
                             />
                         }
                     />
@@ -156,7 +156,7 @@ const Registration = ({navigation}) => {
                 <View style={{
                     textAlign: 'center',
                     alignSelf: 'center',
-                    marginTop: 100,
+                    marginTop: 60,
                     fontSize: screenData.isLandscape ? 18 : 20,
                     width: screenData.isLandscape ?
                         Dimensions.get('screen').width / 2 :
@@ -189,24 +189,25 @@ const styles = StyleSheet.create({
     },
     forgot: {
         fontSize: 13,
-        color: colors.beige,
+        color: colors.mainColor,
     },
     link: {
         fontWeight: 'bold',
-        color: colors.almond,
+        color: colors.mainColor,
     },
     noteContainer: {
+        marginTop: 20,
         flexDirection: 'row',
         alignSelf: 'center',
     },
     note: {
         flexDirection: 'column',
-        color: colors.shadowBlue,
+        color: colors.mainColor,
         fontSize: 18,
         textAlign: 'center',
     },
     errText: {
-        color: colors.shadowBlue,
+        color: colors.mainColor,
         fontWeight: 'bold',
         flexDirection: 'column',
         fontSize: 18,

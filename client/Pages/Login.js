@@ -22,21 +22,29 @@ const Login = ({ navigation }) => {
     const loginHandler = async () => {
         if (typeof password === 'string' || password instanceof String) {
             if (password.trim().length === 0) {
-                return setNote('Поле "Пароль" пусте або містить тільки пробіл')
+                return setNote('Поле "Пароль" пусте або містить тільки пробіл');
             } else if (email.trim().length === 0) {
-                return setNote('Поле "Пароль" пусте або містить тільки пробіл')
+                return setNote('Поле "Email" пусте або містить тільки пробіл');
             } else {
                 try {
                     let data = await login(email, password)
-                    user.setUser(data)
-                    user.setIsAuth(true)
+                    console.log('data', data)
+                    if (data) {
+                        user.setUser(data)
+                        user.setIsAuth(true)
+                    }
 
                     navigation.reset({
                         index: 0,
                         routes: [{ name: 'Authenticated', params: { screen: 'Market' } }],
                     });
                 } catch (e) {
-                    setNote(`${e.response.data.message}`)
+                    if (e.response && e.response.data) {
+                        setNote(`Error when log in: ${e.response.data.message}`);
+                    } else {
+                        setNote('Error when log in something undefined');
+                        console.log(e);
+                    }
                 }
             }
         }
@@ -90,7 +98,7 @@ const Login = ({ navigation }) => {
                                 style={{marginRight: 6}}
                                 name='mail-forward'
                                 size={20}
-                                color='black'
+                                color={colors.mainBlack}
                             />
                         }
                     />
@@ -105,7 +113,7 @@ const Login = ({ navigation }) => {
                                 style={{marginRight: 10}}
                                 name='lock'
                                 size={24}
-                                color='black'
+                                color={colors.mainBlack}
                             />
                         }
                     />
@@ -162,11 +170,11 @@ const styles = StyleSheet.create({
     },
     forgot: {
         fontSize: 13,
-        color: colors.beige,
+        color: colors.mainBlack,
     },
     link: {
         fontWeight: 'bold',
-        color: colors.almond,
+        color: colors.mainBlack,
     },
     noteContainer: {
         marginTop: 30,
@@ -175,12 +183,12 @@ const styles = StyleSheet.create({
     },
     note: {
         flexDirection: 'column',
-        color: colors.shadowBlue,
+        color: colors.mainColor,
         fontSize: 18,
         textAlign: 'center',
     },
     errText: {
-        color: colors.shadowBlue,
+        color: colors.mainColor,
         fontWeight: 'bold',
         flexDirection: 'column',
         fontSize: 18,
