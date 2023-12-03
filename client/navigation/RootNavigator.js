@@ -13,6 +13,7 @@ import Login from "../Pages/Login";
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import Registration from "../Pages/Registration";
 import LoadingScreen from "../Pages/Loading";
+import CryptoItemInfo from "../Pages/Market/CryptoItemInfo";
 
 const Stack = createStackNavigator();
 const Tab = createMaterialBottomTabNavigator();
@@ -41,6 +42,40 @@ const MarketStackScreen = () => {
                 name="Cryptocurrency"
                 component={Cryptocurrency}
             />
+            <Stack.Screen
+                name="CryptoItemInfo"
+                component={CryptoItemInfo}
+            />
+        </Stack.Navigator>
+    )
+}
+
+const PortfolioStackScreen = () => {
+    return(
+        <Stack.Navigator initialRouteName="Portfolio" screenOptions={{headerShown: false}}>
+            <Stack.Screen
+                name="Portfolio"
+                component={Portfolio}
+                options={{
+                    headerShown: false,
+                    tabBarLabel: 'Portfolio',
+                    tabBarIcon: () => (
+                        <View>
+                            <Icon
+                                name={'user'}
+                            />
+                        </View>
+                    ),
+                }}
+            />
+            <Stack.Screen
+                name="Cryptocurrency"
+                component={Cryptocurrency}
+            />
+            <Stack.Screen
+                name="CryptoItemInfo"
+                component={CryptoItemInfo}
+            />
         </Stack.Navigator>
     )
 }
@@ -62,25 +97,25 @@ const AuthenticatedStack = () => (
         inactiveColor="#000"
         labelStyle={{ fontSize: 12 }}
         barStyle={{
-            backgroundColor: colors.mainPurple,
+            backgroundColor: colors.mainDarkPurple,
         }}
     >
-        <Tab.Screen
-            name='Home'
-            options={{
-                tabBarLabel: 'Home',
-                tabBarIcon: () => (
-                    <View>
-                        <Icon
-                            style={[{color: '#fff'}]}
-                            size={25}
-                            name={'search'}
-                        />
-                    </View>
-                ),
-            }}
-            component={Home}
-        />
+        {/*<Tab.Screen*/}
+        {/*    name='Home'*/}
+        {/*    options={{*/}
+        {/*        tabBarLabel: 'Home',*/}
+        {/*        tabBarIcon: () => (*/}
+        {/*            <View>*/}
+        {/*                <Icon*/}
+        {/*                    style={[{color: '#fff'}]}*/}
+        {/*                    size={25}*/}
+        {/*                    name={'search'}*/}
+        {/*                />*/}
+        {/*            </View>*/}
+        {/*        ),*/}
+        {/*    }}*/}
+        {/*    component={Home}*/}
+        {/*/>*/}
         <Tab.Screen
             name='Market'
             options={{
@@ -111,7 +146,7 @@ const AuthenticatedStack = () => (
                     </View>
                 ),
             }}
-            component={Portfolio}
+            component={PortfolioStackScreen}
         />
     </Tab.Navigator>
 )

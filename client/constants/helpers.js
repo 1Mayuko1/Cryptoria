@@ -1,11 +1,11 @@
-import React, { useEffect, useState } from 'react';
-import { Dimensions } from "react-native";
+import {useEffect, useState} from 'react';
+import {Dimensions} from "react-native";
 
 export const colors = {
     mainWhite: '#f2f2f2',
     mainBlack: '#21242d',
     mainPurple: '#99a9e7',
-    highlighted: '#dbdae7',
+    highlighted: '#889eef',
     mainDarkPurple: '#677ccc',
     mainDarkGray: '#818991',
     mainGray: '#b4b4be',
@@ -135,6 +135,11 @@ export const validateRegistration = (pass, repPass, mail, userNameValue) => {
     }
 }
 
+export const extractChangePercent = changeString => {
+    const matches = changeString.match(/\(([^)]+)\)/);
+    return matches ? parseFloat(matches[1].replace('%', '')) : 0;
+};
+
 export const cryptoDataValues = [
     { name: 'Bitcoin', code: 'BTC', price: '$39,279.19', change: '+$840.96 (2.14%)', color: '#FFD700', img: 'https://cryptologos.cc/logos/bitcoin-btc-logo.png' },
     { name: 'Litecoin', code: 'LTC', price: '$146.13', change: '+$7.20 (4.93%)', color: '#C0C0C0', img: 'https://upload.wikimedia.org/wikipedia/commons/thumb/f/f8/LTC-400.png/2048px-LTC-400.png'},
@@ -232,18 +237,20 @@ export const processCurrencyDataForText = (data) => {
     for (let i = 0; i < data.length; i++) {
         const current = data[i];
         const previous = data[i - 1] || null;
-
         const priceSuccess = previous ? current.close > previous.close : false;
 
-        const currentDate = new Date();
-        currentDate.setDate(currentDate.getDate() - (15 - i));
-        const formattedDate = currentDate.toLocaleDateString('en-US', {
-            year: 'numeric',
+        const date = new Date(current.date);
+        const options = {
             month: 'long',
             day: 'numeric',
             hour: 'numeric',
-            minute: 'numeric'
-        });
+            minute: '2-digit',
+            hour12: true
+        };
+
+        date.setFullYear(2024);
+        const formattedDate = date.toLocaleDateString('en-US', options);
+        const formattedTime = date.toLocaleTimeString('en-US', options);
 
         const pricePercent = previous ? ((current.close - previous.close) / previous.close * 100).toFixed(2) : 0;
         const priceNumber = previous ? (current.close - previous.close).toFixed(3) : 0;

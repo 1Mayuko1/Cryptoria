@@ -35,7 +35,7 @@ const Market = ({navigation}) => {
                 console.error('Failed to get token from AsyncStorage', e);
             }
         } else {
-            handleClickMarketMenu()
+            handleCloseMarketMenu()
         }
     };
 
@@ -47,21 +47,25 @@ const Market = ({navigation}) => {
         setMarketMenuVisible(!marketMenuVisible)
     }
 
+    const handleCloseMarketMenu = () => {
+        setMarketMenuVisible(false)
+    }
+
     const handleClickPlusIcon = (name) => {
         if (!marketMenuVisible) {
             console.log(name)
         } else {
-            handleClickMarketMenu()
+            handleCloseMarketMenu()
         }
     }
 
     const handleNavigateToCryptocurrency = (item) => {
         if (!marketMenuVisible) {
-            navigation.navigate('Cryptocurrency', {
+            navigation.navigate('CryptoItemInfo', {
                 currencyData: item
             });
         } else {
-            handleClickMarketMenu()
+            handleCloseMarketMenu()
         }
     }
 
@@ -70,7 +74,7 @@ const Market = ({navigation}) => {
         setFilteredAndSortedData([]);
         setSelectedCategory(category);
         setVisibleItems(itemsPerPage);
-        handleClickMarketMenu()
+        handleCloseMarketMenu()
     };
 
     useEffect(() => {
@@ -230,73 +234,75 @@ const Market = ({navigation}) => {
     }
 
     return (
-        <ScrollView
-            showsVerticalScrollIndicator={false}
-            style={styles.scrollViewContainer}
-        >
+        <>
             <MarketMenu />
-            <TouchableWithoutFeedback onPress={handleClickMarketMenu}>
-                <View style={styles.container}>
-                    <View style={styles.headerContainer}>
-                        <View>
-                            <TouchableOpacity onPress={handleClickMarketMenu} style={styles.headerIconContainer}>
-                                <FontAwesomeIcon style={styles.headerMenuIcon} icon={faBars} />
-                            </TouchableOpacity>
-                        </View>
-                        <View>
-                            <Text style={styles.title}>
-                                Market
-                            </Text>
-                        </View>
-                        <View>
-                            <TouchableOpacity onPress={clearStorageToken} style={styles.headerIconContainer}>
-                                <FontAwesomeIcon style={styles.headerUserIcon} icon={faCircleUser} />
-                            </TouchableOpacity>
-                        </View>
-                    </View>
-
-                    <View style={styles.flatListContainer}>
-                        <FlatList
-                            data={filteredAndSortedData}
-                            showsVerticalScrollIndicator={false}
-                            renderItem={({ item }) => (
-                                <TouchableOpacity onPress={() => handleNavigateToCryptocurrency(item)}>
-                                    <View style={styles.listItem}>
-                                        <View style={[styles.icon]}>
-                                            {
-                                                item.img ?
-                                                (<Image style={styles.iconImage} source={{ uri: item.img }} />)
-                                                : (<View style={[styles.icon, {backgroundColor: item.color}]}></View>)
-                                            }
-                                        </View>
-                                        <View style={styles.listItemDetails}>
-                                            <Text style={styles.listItemName}>{item.name}</Text>
-                                            <Text style={styles.listItemCode}>{item.code}</Text>
-                                        </View>
-                                        <View style={styles.listItemPriceDetails}>
-                                            <Text style={styles.listItemPrice}>{item.price}</Text>
-                                            <Text style={[styles.listItemChange, item.change.startsWith('-') ? { color: `${colors.mainRed}` } : { color: `${colors.mainDarkGreen}` }]}>{item.change}</Text>
-                                        </View>
-                                    </View>
+            <ScrollView
+                showsVerticalScrollIndicator={false}
+                style={styles.scrollViewContainer}
+            >
+                <TouchableWithoutFeedback onPress={handleCloseMarketMenu}>
+                    <View style={styles.container}>
+                        <View style={styles.headerContainer}>
+                            <View>
+                                <TouchableOpacity onPress={handleClickMarketMenu} style={styles.headerIconContainer}>
+                                    <FontAwesomeIcon style={styles.headerMenuIcon} icon={faBars} />
                                 </TouchableOpacity>
-                            )}
-                            keyExtractor={(item) => item.code}
-                        />
-                    </View>
-                    <View style={styles.smallCardsWrapper}>
-                        <CryptoCard name="Litecoin" price="$183.7" data={litecoinPrices} />
-                        <CryptoCard name="Ripple" price="$0.8022" data={ripplePrices} />
-                    </View>
-                    {visibleItems < cryptoData.length && (
-                        <View style={styles.cryptoArrowDownContainer}>
-                            <TouchableOpacity style={styles.cryptoArrowDownBlock} onPress={loadMore}>
-                                <FontAwesomeIcon style={styles.cryptoArrowDownIcon} icon={faArrowDown} />
-                            </TouchableOpacity>
+                            </View>
+                            <View>
+                                <Text style={styles.title}>
+                                    Market
+                                </Text>
+                            </View>
+                            <View>
+                                <TouchableOpacity onPress={clearStorageToken} style={styles.headerIconContainer}>
+                                    <FontAwesomeIcon style={styles.headerUserIcon} icon={faCircleUser} />
+                                </TouchableOpacity>
+                            </View>
                         </View>
-                    )}
-                </View>
-            </TouchableWithoutFeedback>
-        </ScrollView>
+
+                        <View style={styles.flatListContainer}>
+                            <FlatList
+                                data={filteredAndSortedData}
+                                showsVerticalScrollIndicator={false}
+                                renderItem={({ item }) => (
+                                    <TouchableOpacity onPress={() => handleNavigateToCryptocurrency(item)}>
+                                        <View style={styles.listItem}>
+                                            <View style={[styles.icon]}>
+                                                {
+                                                    item.img ?
+                                                    (<Image style={styles.iconImage} source={{ uri: item.img }} />)
+                                                    : (<View style={[styles.icon, {backgroundColor: item.color}]}></View>)
+                                                }
+                                            </View>
+                                            <View style={styles.listItemDetails}>
+                                                <Text style={styles.listItemName}>{item.name}</Text>
+                                                <Text style={styles.listItemCode}>{item.code}</Text>
+                                            </View>
+                                            <View style={styles.listItemPriceDetails}>
+                                                <Text style={styles.listItemPrice}>{item.price}</Text>
+                                                <Text style={[styles.listItemChange, item.change.startsWith('-') ? { color: `${colors.mainRed}` } : { color: `${colors.mainDarkGreen}` }]}>{item.change}</Text>
+                                            </View>
+                                        </View>
+                                    </TouchableOpacity>
+                                )}
+                                keyExtractor={(item) => item.code}
+                            />
+                        </View>
+                        <View style={styles.smallCardsWrapper}>
+                            <CryptoCard name="Litecoin" price="$183.7" data={litecoinPrices} />
+                            <CryptoCard name="Ripple" price="$0.8022" data={ripplePrices} />
+                        </View>
+                        {visibleItems < cryptoData.length && (
+                            <View style={styles.cryptoArrowDownContainer}>
+                                <TouchableOpacity style={styles.cryptoArrowDownBlock} onPress={loadMore}>
+                                    <FontAwesomeIcon style={styles.cryptoArrowDownIcon} icon={faArrowDown} />
+                                </TouchableOpacity>
+                            </View>
+                        )}
+                    </View>
+                </TouchableWithoutFeedback>
+            </ScrollView>
+        </>
     );
 };
 
@@ -498,13 +504,6 @@ const styles= StyleSheet.create({
         elevation: 3,
         backgroundColor: colors.mainBlack,
         width: 200
-    },
-    loadMoreButtonText: {
-        fontSize: 16,
-        lineHeight: 21,
-        fontWeight: 'bold',
-        letterSpacing: 0.25,
-        color: colors.mainWhite,
     },
     cryptoArrowDownContainer: {
         display: "flex",

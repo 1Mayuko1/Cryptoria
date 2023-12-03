@@ -1,199 +1,255 @@
-import React from 'react';
-import {View, Text, StyleSheet, Image, TouchableOpacity, ScrollView} from "react-native";
-import {colors, cryptoDataValues} from "../../constants/helpers";
+import React, {useState} from 'react';
+import {View, Text, StyleSheet, Image, TouchableOpacity, ScrollView, FlatList, Dimensions} from "react-native";
+import {colors, cryptoDataValues, extractChangePercent} from "../../constants/helpers";
 import {faArrowDown, faArrowUp, faPlus} from "@fortawesome/free-solid-svg-icons";
 import {FontAwesomeIcon} from "@fortawesome/react-native-fontawesome";
 import Svg, {Defs, LinearGradient, Path, Rect, Stop} from "react-native-svg";
 import moc_btc_v1 from "../Market/moc_btc_v1.json";
+import CryptoItemInfo from "../Market/CryptoItemInfo";
 
-const Portfolio = () => {
-    const removeDuplicatesByName = array => Array.from(new Map(array.map(item => [item.name, item])).values());
-    let filteredData = cryptoDataValues.sort((a, b) => parseFloat(b.price.replace('$', '').replace(',', '')) - parseFloat(a.price.replace('$', '').replace(',', '')));
-    let first15 = removeDuplicatesByName(filteredData).slice(2, 15);
+const Portfolio = ({navigation}) => {
 
-    const extractChangePercent = changeString => {
-        const matches = changeString.match(/\(([^)]+)\)/);
-        return matches ? parseFloat(matches[1].replace('%', '')) : 0;
+
+
+    const itemsPerPage = 2;
+    const [visibleItems, setVisibleItems] = useState(itemsPerPage);
+    const [cryptoDataPortfolio, setCryptoDataPortfolio] = useState(cryptoDataValues);
+
+    const loadMore = () => {
+        setVisibleItems(prevVisibleItems => prevVisibleItems + itemsPerPage);
     };
 
-    const MiniPortfolioCard = ({ name, code, price, change, img,}) => {
+    const removeDuplicatesByName = array => Array.from(new Map(array.map(item => [item.name, item])).values());
+
+    const getPortfolioData = () => {
+        let cloneData = JSON.parse(JSON.stringify(cryptoDataPortfolio))
+        let data = cloneData.sort((a, b) => parseFloat(b.price.replace('$', '').replace(',', '')) - parseFloat(a.price.replace('$', '').replace(',', '')));
+        return removeDuplicatesByName(data.slice(2, 15));
+    }
+
+    const getTopTraded = () => {
+        let cloneData = JSON.parse(JSON.stringify(cryptoDataPortfolio))
+        let data = cloneData.sort((a, b) => extractChangePercent(b.change) - extractChangePercent(a.change));
+        return removeDuplicatesByName(data.slice(3, 15));
+    }
+
+    const handleNavigateToCryptocurrency = (item) => {
+        navigation.navigate('Cryptocurrency', {
+            currencyData: item
+        });
+    }
+    const handleNavigateToCryptoItemInfo = (item) => {
+        navigation.navigate('CryptoItemInfo', {
+            currencyData: item
+        });
+    }
+
+    const MiniPortfolioCard = ({ idx, code, price, change, img, fullItemData}) => {
         return (
-            <View style={styles.miniCardContainer}>
-                <View style={styles.miniCardContent}>
-                    <View style={styles.miniCardHeaderContainer}>
-                        <View style={styles.miniCardImageContainer}>
-                            <Image style={styles.miniCardImage} source={{ uri: img }} />
-                        </View>
-                        <View style={styles.miniCardCodeTextContainer}>
-                            <Text style={styles.miniCardCodeText}>{code}</Text>
-                        </View>
-                    </View>
-
-                    <View style={styles.miniCardFooterContainer}>
-                        <View style={styles.miniCardFooterBlock}>
-                            <View style={styles.miniCardFooterBlockTextContainer}>
-                                <Text style={styles.portfolioText}>Portfolio</Text>
+            <TouchableOpacity onPress={() => handleNavigateToCryptocurrency(fullItemData)} key={idx}>
+                <View style={styles.miniCardContainer}>
+                    <View style={styles.miniCardContent}>
+                        <View style={styles.miniCardHeaderContainer}>
+                            <View style={styles.miniCardImageContainer}>
+                                <Image style={styles.miniCardImage} source={{ uri: img }} />
                             </View>
-                            <View style={styles.miniCardFooterBlockTextContainer}>
-                                <Text style={styles.priceText}>{price}</Text>
+                            <View style={styles.miniCardCodeTextContainer}>
+                                <Text style={styles.miniCardCodeText}>{code}</Text>
                             </View>
                         </View>
 
-                        <View style={styles.miniCardFooterArrowTextBlock}>
-                            <View style={styles.miniCardFooterBlockIconContainer}>
-                                {
-                                    change.startsWith('-') ?
-                                        (
-                                            <View>
-                                                <FontAwesomeIcon style={styles.miniCardFooterRedIcon} icon={faArrowDown} />
-                                            </View>
-                                        )
-                                        :
-                                        (
-                                            <View>
-                                                <FontAwesomeIcon style={styles.miniCardFooterGreenIcon} icon={faArrowUp} />
-                                            </View>
-                                        )
-                                }
+                        <View style={styles.miniCardFooterContainer}>
+                            <View style={styles.miniCardFooterBlock}>
+                                <View style={styles.miniCardFooterBlockTextContainer}>
+                                    <Text style={styles.portfolioText}>Portfolio</Text>
+                                </View>
+                                <View style={styles.miniCardFooterBlockTextContainer}>
+                                    <Text style={styles.priceText}>{price}</Text>
+                                </View>
                             </View>
-                            <View style={{height: 15}}>
+
+                            <View style={change.startsWith('-') ? styles.miniCardFooterArrowTextBlockRed : styles.miniCardFooterArrowTextBlockGreen}>
                                 <Text style={styles.miniCardFooterBlockText}>
-                                    {change.startsWith('-') ? `-${extractChangePercent(change)}` : `+${extractChangePercent(change)}`}
+                                    {change.startsWith('-') ? `- ${extractChangePercent(change)}` : `+ ${extractChangePercent(change)}`}
                                 </Text>
                             </View>
                         </View>
                     </View>
                 </View>
-            </View>
+            </TouchableOpacity>
         );
     };
 
     return (
-        <View style={styles.container}>
-            <View style={styles.headerUserContainer}>
-                <View style={styles.headerTextContainer}>
-                    <View style={styles.headerTextBlock}>
-                        <Text style={styles.welcomeText}>Welcome</Text>
+        <ScrollView
+            showsVerticalScrollIndicator={false}
+        >
+            <View style={styles.container}>
+                <View style={styles.headerUserContainer}>
+                    <View style={styles.headerTextContainer}>
+                        <View>
+                            <Text style={styles.welcomeText}>Welcome</Text>
+                        </View>
+                        <View>
+                            <Text style={styles.userNameText}>Vladyslav Kondratskyi</Text>
+                        </View>
                     </View>
-                    <View style={styles.headerTextBlock}>
-                        <Text style={styles.userNameText}>Vladyslav Kondratskyi</Text>
+                    <View>
+                        <View style={styles.headerUserImageContainer}>
+                            <View style={styles.customFade}>
+                                <Svg height="100%" width="100%" style={[StyleSheet.absoluteFill, {borderRadius: 10}]}>
+                                    <Defs>
+                                        <LinearGradient id="grad" x1="90%" y1="90%" x2="20%" y2="0%">
+                                            <Stop offset="0%" stopColor={colors.mainPurple} stopOpacity="1" />
+                                            <Stop offset="100%" stopColor={colors.mainDeepDark} stopOpacity="0" />
+                                        </LinearGradient>
+                                    </Defs>
+                                    <Rect x="0" y="0" width="100%" height="100%" fill="url(#grad)" />
+                                </Svg>
+                            </View>
+                            <Image style={styles.headerUserImage} source={require('../../assets/userImage.png')}/>
+                        </View>
                     </View>
                 </View>
-                <View>
-                    <View style={styles.headerUserImageContainer}>
+
+                <View style={styles.balanceCardWrapper}>
+                    <View style={styles.balanceCardContainer}>
+
+                        <View style={styles.firstCircleBalanceCardShadowContainer}>
+                            <View style={styles.firstCircleBalanceCardShadowBlock}></View>
+                        </View>
+                        <View style={styles.secondCircleBalanceCardShadowContainer}></View>
+
                         <View style={styles.customFade}>
-                            <Svg height="100%" width="100%" style={[StyleSheet.absoluteFill, {borderRadius: 10}]}>
+                            <Svg height="100%" width="100%" style={[StyleSheet.absoluteFill, {borderRadius: 20}]}>
                                 <Defs>
-                                    <LinearGradient id="grad" x1="90%" y1="90%" x2="20%" y2="0%">
-                                        <Stop offset="0%" stopColor={colors.mainPurple} stopOpacity="1" />
-                                        <Stop offset="100%" stopColor={colors.mainDeepDark} stopOpacity="0" />
+                                    <LinearGradient id="grad" x1="90%" y1="90%" x2="0%" y2="0%">
+                                        <Stop offset="0%" stopColor={colors.mainDeepDark} stopOpacity="1" />
+                                        <Stop offset="100%" stopColor={colors.mainPurple} stopOpacity="0" />
                                     </LinearGradient>
                                 </Defs>
                                 <Rect x="0" y="0" width="100%" height="100%" fill="url(#grad)" />
                             </Svg>
                         </View>
-                        <Image style={styles.headerUserImage} source={require('../../assets/userImage.png')}/>
-                    </View>
-                </View>
-            </View>
 
-            <View style={styles.balanceCardWrapper}>
-                <View style={styles.balanceCardContainer}>
-
-                    <View style={styles.firstCircleBalanceCardShadowContainer}>
-                        <View style={styles.firstCircleBalanceCardShadowBlock}></View>
-                    </View>
-                    <View style={styles.secondCircleBalanceCardShadowContainer}></View>
-
-                    <View style={styles.customFade}>
-                        <Svg height="100%" width="100%" style={[StyleSheet.absoluteFill, {borderRadius: 20}]}>
-                            <Defs>
-                                <LinearGradient id="grad" x1="90%" y1="90%" x2="0%" y2="0%">
-                                    <Stop offset="0%" stopColor={colors.mainDeepDark} stopOpacity="1" />
-                                    <Stop offset="100%" stopColor={colors.mainPurple} stopOpacity="0" />
-                                </LinearGradient>
-                            </Defs>
-                            <Rect x="0" y="0" width="100%" height="100%" fill="url(#grad)" />
-                        </Svg>
-                    </View>
-
-                    <View style={styles.topCardBalanceContainer}>
-                        <View style={styles.topCardBalanceTextBlock}>
-                            <Text style={styles.balanceText}>Balance</Text>
-                        </View>
-                        <View style={styles.topCardBalanceTextBlock}>
-                            <Text style={styles.sumText}>$ 375,854</Text>
-                        </View>
-                    </View>
-
-                    <View style={styles.bottomCardBalanceContainer}>
-                        <View style={styles.bottomLeftCardBalanceContainer}>
-                            <View style={styles.bottomLeftCardBalanceBlock}>
-                                <Text style={styles.monthlyProfitText}>Monthly profit</Text>
+                        <View style={styles.topCardBalanceContainer}>
+                            <View style={styles.topCardBalanceTextBlock}>
+                                <Text style={styles.balanceText}>Balance</Text>
                             </View>
-                            <View style={styles.bottomLeftCardBalanceBlock}>
-                                <Text style={styles.monthlyPrice}>$ 8,579</Text>
+                            <View style={styles.topCardBalanceTextBlock}>
+                                <Text style={styles.sumText}>$ 75,854</Text>
                             </View>
                         </View>
 
-                        {/*<View style={styles.bottomRightCardBalanceContainer}>*/}
-                        {/*    <View style={styles.bottomRightCardBalanceBlock}>*/}
-                        {/*        {*/}
-                        {/*            !styles.container ?*/}
-                        {/*                (*/}
-                        {/*                    <FontAwesomeIcon style={styles.cardBalanceArrow} icon={faArrowDown} />*/}
-                        {/*                )*/}
-                        {/*                :*/}
-                        {/*                (*/}
-                        {/*                    <FontAwesomeIcon style={styles.cardBalanceArrow} icon={faArrowUp} />*/}
-                        {/*                )*/}
-                        {/*        }*/}
-                        {/*    </View>*/}
-                        {/*    <View style={styles.bottomRightCardBalanceBlock}>*/}
-                        {/*        <Text style={styles.bottomRightCardBalanceText}>+25%</Text>*/}
-                        {/*    </View>*/}
-                        {/*</View>*/}
-                    </View>
+                        <View style={styles.bottomCardBalanceContainer}>
+                            <View style={styles.bottomLeftCardBalanceContainer}>
+                                <View style={styles.bottomLeftCardBalanceBlock}>
+                                    <Text style={styles.monthlyProfitText}>Monthly profit</Text>
+                                </View>
+                                <View style={styles.bottomLeftCardBalanceBlock}>
+                                    <Text style={styles.monthlyPrice}>$ 4,579</Text>
+                                </View>
+                            </View>
 
+                            {/*<View style={styles.miniCardFooterArrowTextBlockGreen}>*/}
+                            {/*    <Text style={styles.miniCardFooterBlockText}>*/}
+                            {/*        +27%*/}
+                            {/*    </Text>*/}
+                            {/*</View>*/}
+
+                            {/*<View style={styles.bottomRightCardBalanceContainer}>*/}
+                            {/*    <View style={styles.bottomRightCardBalanceBlock}>*/}
+                            {/*        {*/}
+                            {/*            !styles.container ?*/}
+                            {/*                (*/}
+                            {/*                    <FontAwesomeIcon style={styles.cardBalanceArrow} icon={faArrowDown} />*/}
+                            {/*                )*/}
+                            {/*                :*/}
+                            {/*                (*/}
+                            {/*                    <FontAwesomeIcon style={styles.cardBalanceArrow} icon={faArrowUp} />*/}
+                            {/*                )*/}
+                            {/*        }*/}
+                            {/*    </View>*/}
+                            {/*    <View style={styles.bottomRightCardBalanceBlock}>*/}
+                            {/*        <Text style={styles.bottomRightCardBalanceText}>+25%</Text>*/}
+                            {/*    </View>*/}
+                            {/*</View>*/}
+                        </View>
+
+                    </View>
+                </View>
+
+                <View style={styles.myPortfolioTextContainer}>
+                    <Text style={styles.myPortfolioText}>My Portfolio</Text>
+                </View>
+
+                <View style={styles.myPortfolioCardsWrapper}>
+                    <ScrollView
+                        horizontal
+                        showsHorizontalScrollIndicator={false}
+                        style={{height: 135}}
+                    >
+                        <View style={styles.myPortfolioCardsContainer}>
+                            {
+                                getPortfolioData() && getPortfolioData().map((el, idx) => {
+                                    return (
+                                        <MiniPortfolioCard
+                                            idx={idx}
+                                            name={el.name}
+                                            code={el.code}
+                                            price={el.price}
+                                            change={el.change}
+                                            img={el.img}
+                                            fullItemData={el}
+                                        />
+                                    )
+                                })
+                            }
+                        </View>
+                    </ScrollView>
+                </View>
+
+                <View style={styles.myPortfolioTextContainer}>
+                    <Text style={styles.myPortfolioText}>Ranking List</Text>
+                </View>
+
+                <View style={styles.flatListContainer}>
+                    <FlatList
+                        data={getTopTraded().slice(0, visibleItems)}
+                        data={getTopTraded().slice(0, visibleItems)}
+                        showsVerticalScrollIndicator={false}
+                        renderItem={({ item }) => (
+                            <TouchableOpacity onPress={() => handleNavigateToCryptoItemInfo(item)}>
+                                <View style={styles.listItem}>
+                                    <View style={styles.icon}>
+                                        <Image style={styles.iconImage} source={{ uri: item.img }} />
+                                    </View>
+                                    <View style={styles.listItemDetails}>
+                                        <Text style={styles.listItemName}>{item.name}</Text>
+                                        <Text style={styles.listItemCode}>{item.code}</Text>
+                                    </View>
+                                    <View style={styles.listItemPriceDetails}>
+                                        <Text style={styles.listItemPrice}>{item.price}</Text>
+                                        <Text style={[styles.listItemChange, item.change.startsWith('-') ? { color: `${colors.mainRed}` } : { color: `${colors.mainDarkGreen}` }]}>{item.change}</Text>
+                                    </View>
+                                </View>
+                            </TouchableOpacity>
+                        )}
+                        keyExtractor={(item) => item.code}
+                    />
+                </View>
+
+                <View>
+                    {visibleItems < getTopTraded().length && (
+                        <View style={styles.cryptoArrowDownContainer}>
+                            <TouchableOpacity style={styles.cryptoArrowDownBlock} onPress={loadMore}>
+                                <FontAwesomeIcon style={styles.cryptoArrowDownIcon} icon={faArrowDown} />
+                            </TouchableOpacity>
+                        </View>
+                    )}
                 </View>
             </View>
-
-            <View style={styles.myPortfolioTextContainer}>
-                <Text style={styles.myPortfolioText}>My Portfolio</Text>
-            </View>
-
-            <View style={styles.myPortfolioCardsWrapper}>
-                <ScrollView
-                    horizontal
-                    showsHorizontalScrollIndicator={false}
-                    style={{height: 135}}
-                >
-                    <View style={styles.myPortfolioCardsContainer}>
-                        {
-                            first15.map((el, idx) => {
-                                return (
-                                    <MiniPortfolioCard
-                                        name={el.name}
-                                        code={el.code}
-                                        price={el.price}
-                                        change={el.change}
-                                        img={el.img}
-                                    />
-                                )
-                            })
-                        }
-                    </View>
-                </ScrollView>
-            </View>
-
-            <View style={styles.myPortfolioTextContainer}>
-                <Text style={styles.myPortfolioText}>Ranking List</Text>
-            </View>
-
-            <View>
-
-            </View>
-        </View>
+        </ScrollView>
     );
 };
 
@@ -215,9 +271,6 @@ const styles= StyleSheet.create({
     },
     headerTextContainer: {
         marginLeft: 10,
-    },
-    headerTextBlock: {
-
     },
     welcomeText: {
         fontSize: 16,
@@ -392,7 +445,8 @@ const styles= StyleSheet.create({
     },
     myPortfolioTextContainer: {
         marginLeft: 20,
-        marginTop: 30,
+        marginTop: 20,
+        marginBottom: 10,
         display: "flex",
         justifyContent: "flex-start",
         alignItems: "flex-start",
@@ -487,7 +541,9 @@ const styles= StyleSheet.create({
         fontWeight: "bold",
         color: colors.mainBlack
     },
-    miniCardFooterArrowTextBlock: {
+    miniCardFooterArrowTextBlockGreen: {
+        textAlign: "center",
+        minWidth: 50,
         height: 20,
         paddingLeft: 5,
         paddingRight: 5,
@@ -495,7 +551,19 @@ const styles= StyleSheet.create({
         display: "flex",
         borderRadius: 5,
         flexDirection: "row",
-        backgroundColor: colors.mainDeepDark
+        backgroundColor: colors.mainGreen
+    },
+    miniCardFooterArrowTextBlockRed: {
+        textAlign: "center",
+        minWidth: 50,
+        height: 20,
+        paddingLeft: 5,
+        paddingRight: 5,
+        marginTop: 20,
+        display: "flex",
+        borderRadius: 5,
+        flexDirection: "row",
+        backgroundColor: colors.mainRed
     },
     miniCardFooterBlockIconContainer: {
 
@@ -515,7 +583,105 @@ const styles= StyleSheet.create({
         color: colors.mainGreen,
     },
     miniCardFooterBlockText: {
+        textAlign: "center",
+        width: '100%',
         fontSize: 14,
         color: colors.mainWhite
+    },
+
+    // Ranking list
+    flatListContainer: {
+        // width: Dimensions.get('screen').width - 40,
+        display: "flex",
+        alignItems: 'center',
+        justifyContent: 'center',
+    },
+    listItem: {
+        width: Dimensions.get('screen').width - 40,
+        flexDirection: 'row',
+        borderRadius: 15,
+        alignItems: 'center',
+        justifyContent: 'space-between',
+        marginBottom: 20,
+        marginRight: 5,
+        padding: 10,
+        shadowColor: colors.mainBlack,
+        shadowOffset: {
+            width: 2,
+            height: 2,
+        },
+        shadowOpacity: 0.2,
+        shadowRadius: 4,
+        elevation: 6,
+        backgroundColor: colors.mainWhite
+    },
+    listItemDetails: {
+        flex: 1,
+        flexDirection: 'column',
+        alignItems: 'flex-start'
+    },
+    listItemName: {
+        fontSize: 20,
+        fontWeight: 'bold',
+    },
+    listItemCode: {
+        color: colors.mainDarkGray,
+        marginTop: 5
+    },
+    chartWrapper: {
+        flex: 1,
+        justifyContent: "center",
+        alignItems: "center",
+    },
+    listItemPriceDetails: {
+        flex: 1,
+        flexDirection: 'column',
+        alignItems: 'flex-end'
+    },
+    listItemPrice: {
+        fontSize: 14,
+        fontWeight: 'bold',
+    },
+    listItemChange: {
+        fontSize: 12,
+        fontWeight: 'normal',
+    },
+    cryptoArrowDownContainer: {
+        display: "flex",
+        justifyContent: "center",
+        alignItems: "center",
+        marginTop: 20,
+        marginBottom: 15
+    },
+    cryptoArrowDownBlock: {
+        display: "flex",
+        justifyContent: "center",
+        alignItems: "center",
+        width: 35,
+        height: 35,
+        borderRadius: 50,
+        shadowColor: colors.mainBlack,
+        shadowOffset: {
+            width: 2,
+            height: 2,
+        },
+        shadowOpacity: 0.2,
+        shadowRadius: 4,
+        elevation: 6,
+        backgroundColor: colors.mainWhite,
+    },
+    cryptoArrowDownIcon: {
+        outlineStyle: 'none'
+    },
+    icon: {
+        width: 30,
+        height: 30,
+        borderRadius: 50,
+        marginRight: 15,
+    },
+    iconImage: {
+        width: 30,
+        height: 30,
+        borderRadius: 50,
     },
 });
