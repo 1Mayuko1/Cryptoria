@@ -21,4 +21,7 @@ export default class UserStore {
     get user() {
         return this._user
     }
+    get userInfo() {
+        return this._user
+    }
 }

@@ -14,6 +14,8 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import Registration from "../Pages/Registration";
 import LoadingScreen from "../Pages/Loading";
 import CryptoItemInfo from "../Pages/Market/CryptoItemInfo";
+import Risks from "../Pages/Risks";
+import Notifications from "../Pages/Risks/Notifications";
 
 const Stack = createStackNavigator();
 const Tab = createMaterialBottomTabNavigator();
@@ -75,6 +77,10 @@ const PortfolioStackScreen = () => {
             <Stack.Screen
                 name="CryptoItemInfo"
                 component={CryptoItemInfo}
+            />
+            <Stack.Screen
+                name="Notifications"
+                component={Notifications}
             />
         </Stack.Navigator>
     )

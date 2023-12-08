@@ -13,18 +13,35 @@ import {
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import {FontAwesomeIcon} from "@fortawesome/react-native-fontawesome";
 import {faArrowDown, faBars, faCircleUser, faPlus} from "@fortawesome/free-solid-svg-icons";
-import {colors, cryptoDataValues} from "../../constants/helpers";
+import {colors, cryptoDataValues, testasData} from "../../constants/helpers";
 import Svg, { Path, Defs, LinearGradient, Stop, Rect } from 'react-native-svg';
+import {fetchAllCrypto} from "../../store/cryptoStore";
+
+
 
 const Market = ({navigation}) => {
     const removeDuplicatesByName = array => Array.from(new Map(array.map(item => [item.name, item])).values());
-    const [cryptoData, setCryptoData] = useState(removeDuplicatesByName(cryptoDataValues));
+    const [cryptoData, setCryptoData] = useState(testasData);
 
     const itemsPerPage = 5;
     const [visibleItems, setVisibleItems] = useState(itemsPerPage);
     const [selectedCategory, setSelectedCategory] = useState('All');
     const [filteredAndSortedData, setFilteredAndSortedData] = useState([]);
     const [marketMenuVisible, setMarketMenuVisible] = useState(false);
+
+    // useEffect(() => {
+    //     const loadData = async () => {
+    //         try {
+    //             const dataFromServer = await fetchAllCrypto();
+    //             setCryptoData(dataFromServer);
+    //             console.log('testas', dataFromServer)
+    //         } catch (error) {
+    //             console.error("Error when fetchAllCrypto:", error);
+    //         }
+    //     };
+    //
+    //     loadData();
+    // }, []);
 
     const clearStorageToken = async () => {
         if (!marketMenuVisible) {
@@ -280,7 +297,7 @@ const Market = ({navigation}) => {
                                             </View>
                                             <View style={styles.listItemPriceDetails}>
                                                 <Text style={styles.listItemPrice}>{item.price}</Text>
-                                                <Text style={[styles.listItemChange, item.change.startsWith('-') ? { color: `${colors.mainRed}` } : { color: `${colors.mainDarkGreen}` }]}>{item.change}</Text>
+                                                <Text style={[styles.listItemChange, item?.change?.startsWith('-') ? { color: `${colors.mainRed}` } : { color: `${colors.mainDarkGreen}` }]}>{item.change}</Text>
                                             </View>
                                         </View>
                                     </TouchableOpacity>

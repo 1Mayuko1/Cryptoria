@@ -5,6 +5,7 @@ import { LogBox } from "react-native";
 // import CryptoStore from "./store/cryptoStore";
 import AppContainer from "./AppContainer";
 import UserStore from "./store/userStore";
+import UserCryptoStore from "./store/userCryptoStore";
 
 LogBox.ignoreLogs([""]);
 
@@ -15,6 +16,7 @@ export default function App() {
     return (
         <Context.Provider value={{
             user: new UserStore(),
+            userCrypto: new UserCryptoStore()
             // userCryptocurrency: new UserCryptoStore(),
             // cryptocurrency: new CryptoStore()
         }}>

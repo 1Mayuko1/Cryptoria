@@ -1,24 +1,31 @@
-import React, {useEffect, useMemo, useState} from 'react';
+import React, {useContext, useEffect, useMemo, useState} from 'react';
 import {Dimensions, FlatList, Image, ScrollView, StyleSheet, Text, TouchableOpacity, View} from "react-native";
 import moc_btc from './moc_ltc_v1.json'
 import { LineChart, BarChart } from 'react-native-chart-kit';
 import {FontAwesomeIcon} from "@fortawesome/react-native-fontawesome";
+import * as Notifications from 'expo-notifications';
 import {
     faArrowDown,
     faArrowUp, faCalendar, faChartLine,
     faMagnifyingGlassDollar, faMinus,
     faMoneyBill,
     faPlus,
-    faShop
+    faShop, faTrash, faUser
 } from "@fortawesome/free-solid-svg-icons";
-import {colors, extractChangePercent, processCurrencyDataForText} from "../../constants/helpers";
+import {colors, cryptoDataValues, extractChangePercent, processCurrencyDataForText} from "../../constants/helpers";
 import LoadingScreen from "../Loading";
 import Slider from '@react-native-community/slider';
 import { Table, Row, Rows } from 'react-native-table-component';
+import {deleteUserCrypto, fetchAllUserCrypto} from "../../store/cryptoStore";
+import AsyncStorage from "@react-native-async-storage/async-storage";
+import jwtDecode from "jwt-decode";
+import {Context} from "../../App";
 
 const Cryptocurrency = ({navigation, route}) => {
     const { currencyData } = route.params;
     const itemsPerPage = 4;
+    const {userCrypto} = useContext(Context)
+
     const [activeChartTab, setActiveChartTab] = useState('Price')
     const [priceDataValues, setPriceDataValues] = useState([])
     const [visibleCryptoDataPrice, setVisibleCryptoDataPrice] = useState([])
@@ -26,7 +33,8 @@ const Cryptocurrency = ({navigation, route}) => {
     const [visibleItems, setVisibleItems] = useState(itemsPerPage);
     const [sliderValue, setSliderValue] = useState(20);
     const [isScrollEnabled, setIsScrollEnabled] = useState(true);
-    const [forecastTableHead, setForecastTableHead] = useState(['Name', 'Efficiency', 'Using', 'Usage %', 'Result']);
+
+    const [forecastTableHead, setForecastTableHead] = useState(['Name', 'Efficiency', 'Usage', 'Usage %', 'Result']);
     const [forecastTableData, setForecastTableData] = useState(
         [
             ['ARIMA', '98%', '+', '100%', '+'],
@@ -46,14 +54,8 @@ const Cryptocurrency = ({navigation, route}) => {
         ]
     );
 
-    const [risksSummaryTableHead, setRisksSummaryTableHead] = useState(['VaR', 'ES']);
-    const [risksSummaryTableData, setRisksSummaryTableData] = useState(
-        [
-            ['', ''],
-            ['', ''],
-        ]
-    );
-
+    const [risksSummaryTableHead, setRisksSummaryTableHead] = useState(['Name', 'Status', 'Result']);
+    const [risksSummaryTableData, setRisksSummaryTableData] = useState([]);
 
     const responseFromSR = {
         VaR: -0.041243393285825415,
@@ -77,14 +79,60 @@ const Cryptocurrency = ({navigation, route}) => {
         const esMessage = `ES: In the event that losses exceed VaR, the average size of losses can be close to ${esPercent}%.`;
 
         setRisksSummaryTableData([
-            [varStatus, varMessage],
-            [esStatus, esMessage]
+            ['VaR', varStatus, varMessage],
+            ['ES', esStatus, esMessage]
         ])
     }
 
     const loadMore = () => {
         setVisibleItems(prevVisibleItems => prevVisibleItems + itemsPerPage);
     };
+
+    const checkToken = async () => {
+        try {
+            const value = await AsyncStorage.getItem('token');
+            if (value !== null || undefined) {
+                return jwtDecode(value)
+            }
+        } catch (e) {
+            console.log('err checkToken', e)
+        }
+    }
+
+    const onDeleteValue = () => {
+        checkToken().then((res) => {
+            deleteUserCrypto(res.id, currencyData.code).then(async (r) => {
+                const fullUserData = []
+
+                const dataFromServer = await fetchAllUserCrypto(res.id);
+                dataFromServer.map(userCrypto => {
+                    const cryptoData = cryptoDataValues.find(crypto => crypto.code === userCrypto.cryptocurrency.code);
+                    if (cryptoData) {
+                        fullUserData.push(cryptoData)
+                    }
+                });
+
+                userCrypto.setUserCrypto(fullUserData)
+            })
+        })
+        navigation.navigate('Portfolio');
+    }
+
+    const handlePlusSliderValue = () => {
+        if (sliderValue < 60) {
+            setSliderValue(sliderValue + 1)
+        }
+    }
+
+    const handleMinusSliderValue = () => {
+        if (sliderValue > 15) {
+            setSliderValue(sliderValue - 1)
+        }
+    }
+
+    const goToRisks = () => {
+        navigation.navigate('Notifications');
+    }
 
     const cutChartData = useMemo(() =>
             moc_btc.response.historical_data.slice(-sliderValue),
@@ -355,9 +403,9 @@ const Cryptocurrency = ({navigation, route}) => {
                                     <FontAwesomeIcon style={styles.cryptoIcon} icon={faShop} />
                                 </View>
                             </TouchableOpacity>
-                            <TouchableOpacity>
+                            <TouchableOpacity onPress={goToRisks}>
                                 <View style={styles.cryptoIconBlock}>
-                                    <FontAwesomeIcon style={styles.cryptoIcon} icon={faMoneyBill} />
+                                    <FontAwesomeIcon style={styles.cryptoIcon} icon={faUser} />
                                 </View>
                             </TouchableOpacity>
                         </View>
@@ -392,19 +440,19 @@ const Cryptocurrency = ({navigation, route}) => {
                     <Chart activeTab={activeChartTab} />
 
                     <View style={styles.cryptoIconsButtonWrapper}>
-                        <TouchableOpacity>
+                        <TouchableOpacity onPress={handlePlusSliderValue}>
                             <View style={styles.cryptoIconsButtonBlock}>
                                 <FontAwesomeIcon style={styles.cryptoIconsButtonPlus} icon={faPlus} />
                             </View>
                         </TouchableOpacity>
-                        <TouchableOpacity>
+                        <TouchableOpacity onPress={handleMinusSliderValue}>
                             <View style={styles.cryptoIconsButtonBlock}>
                                 <FontAwesomeIcon style={styles.cryptoIconsButtonMinus} icon={faMinus} />
                             </View>
                         </TouchableOpacity>
-                        <TouchableOpacity>
+                        <TouchableOpacity onPress={() => onDeleteValue()}>
                             <View style={styles.cryptoIconsButtonBlock}>
-                                <FontAwesomeIcon style={styles.cryptoIconsButtonCalendar} icon={faCalendar} />
+                                <FontAwesomeIcon style={styles.cryptoIconsButtonCalendar} icon={faTrash} />
                             </View>
                         </TouchableOpacity>
                         <TouchableOpacity>

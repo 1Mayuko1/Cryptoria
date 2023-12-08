@@ -1,4 +1,4 @@
-import React, {useState} from 'react';
+import React, {useContext, useEffect, useState} from 'react';
 import {View, Text, StyleSheet, Image, TouchableOpacity, ScrollView, FlatList, Dimensions} from "react-native";
 import {colors, cryptoDataValues, extractChangePercent} from "../../constants/helpers";
 import {faArrowDown, faArrowUp, faPlus} from "@fortawesome/free-solid-svg-icons";
@@ -6,14 +6,61 @@ import {FontAwesomeIcon} from "@fortawesome/react-native-fontawesome";
 import Svg, {Defs, LinearGradient, Path, Rect, Stop} from "react-native-svg";
 import moc_btc_v1 from "../Market/moc_btc_v1.json";
 import CryptoItemInfo from "../Market/CryptoItemInfo";
+import {fetchAllUserCrypto} from "../../store/cryptoStore";
+import {Context} from "../../App";
+import {check} from "../../http/userApi";
+import AsyncStorage from "@react-native-async-storage/async-storage";
+import jwtDecode from "jwt-decode";
+import { observer } from "mobx-react";
+import { useIsFocused } from '@react-navigation/native';
 
-const Portfolio = ({navigation}) => {
 
-
-
+const Portfolio = observer(({navigation}) => {
     const itemsPerPage = 2;
     const [visibleItems, setVisibleItems] = useState(itemsPerPage);
-    const [cryptoDataPortfolio, setCryptoDataPortfolio] = useState(cryptoDataValues);
+    const [cryptoDataPortfolio, setCryptoDataPortfolio] = useState([]);
+    const {user} = useContext(Context)
+    const {userCrypto} = useContext(Context)
+    const isFocused = useIsFocused();
+
+    const checkToken = async () => {
+        try {
+            const value = await AsyncStorage.getItem('token');
+            if (value !== null || undefined) {
+                return jwtDecode(value)
+            }
+        } catch (e) {
+            console.log('err checkToken', e)
+        }
+    }
+
+    const loadData = async (userId) => {
+        try {
+            let fullUserData = []
+            const dataFromServer = await fetchAllUserCrypto(userId);
+            dataFromServer.map(userCrypto => {
+                const cryptoData = cryptoDataValues.find(crypto => crypto.code === userCrypto.cryptocurrency.code);
+                if (cryptoData) {
+                    fullUserData.push(cryptoData)
+                }
+            });
+
+            setCryptoDataPortfolio(fullUserData)
+            userCrypto.setUserCrypto(fullUserData)
+        } catch (error) {
+            console.error("Error when fetchAllCrypto:", error);
+        }
+    };
+
+    useEffect(() => {
+        if (isFocused) {
+            checkToken().then((res) => {
+                if (res && res.id) {
+                    loadData(res.id);
+                }
+            });
+        }
+    }, [isFocused]);
 
     const loadMore = () => {
         setVisibleItems(prevVisibleItems => prevVisibleItems + itemsPerPage);
@@ -22,15 +69,13 @@ const Portfolio = ({navigation}) => {
     const removeDuplicatesByName = array => Array.from(new Map(array.map(item => [item.name, item])).values());
 
     const getPortfolioData = () => {
-        let cloneData = JSON.parse(JSON.stringify(cryptoDataPortfolio))
-        let data = cloneData.sort((a, b) => parseFloat(b.price.replace('$', '').replace(',', '')) - parseFloat(a.price.replace('$', '').replace(',', '')));
-        return removeDuplicatesByName(data.slice(2, 15));
+        return cryptoDataPortfolio;
     }
 
     const getTopTraded = () => {
-        let cloneData = JSON.parse(JSON.stringify(cryptoDataPortfolio))
+        let cloneData = JSON.parse(JSON.stringify(cryptoDataValues))
         let data = cloneData.sort((a, b) => extractChangePercent(b.change) - extractChangePercent(a.change));
-        return removeDuplicatesByName(data.slice(3, 15));
+        return removeDuplicatesByName(data.slice(1, 15));
     }
 
     const handleNavigateToCryptocurrency = (item) => {
@@ -216,7 +261,6 @@ const Portfolio = ({navigation}) => {
                 <View style={styles.flatListContainer}>
                     <FlatList
                         data={getTopTraded().slice(0, visibleItems)}
-                        data={getTopTraded().slice(0, visibleItems)}
                         showsVerticalScrollIndicator={false}
                         renderItem={({ item }) => (
                             <TouchableOpacity onPress={() => handleNavigateToCryptoItemInfo(item)}>
@@ -251,7 +295,7 @@ const Portfolio = ({navigation}) => {
             </View>
         </ScrollView>
     );
-};
+});
 
 export default Portfolio;
 

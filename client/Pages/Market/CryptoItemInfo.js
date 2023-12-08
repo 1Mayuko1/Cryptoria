@@ -1,12 +1,16 @@
-import React, {useEffect, useState} from 'react';
+import React, {useContext, useEffect, useState} from 'react';
 import * as RNComponents from "react-native";
 import {Dimensions, FlatList, Image, ScrollView, StyleSheet, Text, TouchableOpacity, View} from "react-native";
-import {colors, extractChangePercent, processCurrencyDataForText} from "../../constants/helpers";
+import {colors, cryptoDataValues, extractChangePercent, processCurrencyDataForText} from "../../constants/helpers";
 import {FontAwesomeIcon} from "@fortawesome/react-native-fontawesome";
 import {faArrowDown, faArrowUp, faCube} from "@fortawesome/free-solid-svg-icons";
 import moc_btc from "./moc_ltc_v1.json";
 import {LineChart} from "react-native-chart-kit";
 import LoadingScreen from "../Loading";
+import {addUserCrypto, deleteUserCrypto, fetchAllUserCrypto} from "../../store/cryptoStore";
+import AsyncStorage from "@react-native-async-storage/async-storage";
+import jwtDecode from "jwt-decode";
+import {Context} from "../../App";
 
 const CryptoItemInfo = ({navigation, route}) => {
     const { currencyData } = route.params;
@@ -16,16 +20,28 @@ const CryptoItemInfo = ({navigation, route}) => {
     const lastMonth = moc_btc.response.historical_data.slice(-60);
     const [sortTimeMenuVisible, setSortTimeMenuVisible] = useState(false);
     const [sortTimeMenuOption, setSortTimeMenuOption] = useState('Today');
-    const [buySellSorting, setBuySellSorting] = useState('Buy');
+    const [buySellSorting, setBuySellSorting] = useState('Add');
     const [chartData, setChartData] = useState(lastDay);
     const [visibleItems, setVisibleItems] = useState(itemsPerPage);
     const [priceDataValues, setPriceDataValues] = useState([])
     const [visibleCryptoDataPrice, setVisibleCryptoDataPrice] = useState([])
     const [loading, setLoading] = useState(true);
+    const {userCrypto} = useContext(Context)
 
     const loadMore = () => {
         setVisibleItems(prevVisibleItems => prevVisibleItems + itemsPerPage);
     };
+
+    const checkToken = async () => {
+        try {
+            const value = await AsyncStorage.getItem('token');
+            if (value !== null || undefined) {
+                return jwtDecode(value)
+            }
+        } catch (e) {
+            console.log('err checkToken', e)
+        }
+    }
 
     useEffect(() => {
         setTimeout(() => {
@@ -52,7 +68,6 @@ const CryptoItemInfo = ({navigation, route}) => {
         setPriceDataValues(processedData)
     }, 1000)
 
-
     const handleChangeSortTimeMenu = () => {
         switch (sortTimeMenuOption) {
             case 'Today':
@@ -72,11 +87,31 @@ const CryptoItemInfo = ({navigation, route}) => {
 
     const handleClickBuyButton = (option) => {
         console.log('clicked Buy')
+        checkToken().then((res) => {
+            addUserCrypto(res.id, currencyData.code, 1).then(response => {
+                console.log('testas', response)
+            })
+        })
         setBuySellSorting(option)
     }
 
     const handleClickSellButton = (option) => {
         console.log('clicked Sell')
+        checkToken().then((res) => {
+            deleteUserCrypto(res.id, currencyData.code).then(async (r) => {
+                const fullUserData = []
+
+                const dataFromServer = await fetchAllUserCrypto(res.id);
+                dataFromServer.map(userCrypto => {
+                    const cryptoData = cryptoDataValues.find(crypto => crypto.code === userCrypto.cryptocurrency.code);
+                    if (cryptoData) {
+                        fullUserData.push(cryptoData)
+                    }
+                });
+
+                userCrypto.setUserCrypto(fullUserData)
+            })
+        })
         setBuySellSorting(option)
     }
 
@@ -188,25 +223,25 @@ const CryptoItemInfo = ({navigation, route}) => {
                             <View style={styles.headerBuySellButtonsBlock}>
                                 <View>
                                     <TouchableOpacity
-                                        onPress={() => handleClickBuyButton('Buy')}
-                                        style={[styles.buyButton, buySellSorting === 'Buy' && styles.activeSellBuyButton]}
+                                        onPress={() => handleClickBuyButton('Add')}
+                                        style={[styles.buyButton, buySellSorting === 'Add' && styles.activeSellBuyButton]}
                                     >
                                         <RNComponents.Text
-                                            style={[styles.buySellButtonText, buySellSorting === 'Buy' && styles.activeBuySellButtonText]}
+                                            style={[styles.buySellButtonText, buySellSorting === 'Add' && styles.activeBuySellButtonText]}
                                         >
-                                            Buy
+                                            Add
                                         </RNComponents.Text>
                                     </TouchableOpacity>
                                 </View>
                                 <View>
                                     <TouchableOpacity
-                                        onPress={() => handleClickSellButton('Sell')}
-                                        style={[styles.sellButton, buySellSorting === 'Sell' && styles.activeSellBuyButton]}
+                                        onPress={() => handleClickSellButton('Remove')}
+                                        style={[styles.sellButton, buySellSorting === 'Remove' && styles.activeSellBuyButton]}
                                     >
                                         <RNComponents.Text
-                                            style={[styles.buySellButtonText, buySellSorting === 'Sell' && styles.activeBuySellButtonText]}
+                                            style={[styles.buySellButtonText, buySellSorting === 'Remove' && styles.activeBuySellButtonText]}
                                         >
-                                            Sell
+                                            Remove
                                         </RNComponents.Text>
                                     </TouchableOpacity>
                                 </View>

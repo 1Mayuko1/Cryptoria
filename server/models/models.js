@@ -13,13 +13,19 @@ const UserCryptocurrencies = sequelize.define('userCryptocurrencies', {
     userId: { type: DataTypes.INTEGER },
     cryptocurrencyId: { type: DataTypes.INTEGER },
     count: { type: DataTypes.STRING },
-    date: { type: DataTypes.STRING },
 })
 
 const Cryptocurrency = sequelize.define('cryptocurrency', {
     id: { type: DataTypes.INTEGER, primaryKey: true, autoIncrement: true },
     name: { type: DataTypes.STRING, unique: true },
-    symbol: { type: DataTypes.STRING, unique: false },
+    code: { type: DataTypes.STRING, unique: false },
+})
+
+const UserNotifications = sequelize.define('userNotifications', {
+    id: { type: DataTypes.INTEGER, primaryKey: true, autoIncrement: true },
+    userId: { type: DataTypes.INTEGER },
+    type: { type: DataTypes.STRING, unique: false },
+    message: { type: DataTypes.TEXT, unique: false },
 })
 
 const ExchangeRates = sequelize.define('exchangeRates', {
@@ -40,10 +46,14 @@ const CryptocurrencyDescription = sequelize.define('cryptocurrencyDescription', 
 Cryptocurrency.hasMany(CryptocurrencyDescription, {as: 'info'});
 CryptocurrencyDescription.belongsTo(Cryptocurrency)
 
+UserCryptocurrencies.belongsTo(Cryptocurrency, { foreignKey: 'cryptocurrencyId', as: 'cryptocurrency' });
+Cryptocurrency.hasMany(UserCryptocurrencies, { foreignKey: 'cryptocurrencyId' });
+
 module.exports = {
     User,
     Cryptocurrency,
     UserCryptocurrencies,
     ExchangeRates,
-    CryptocurrencyDescription
+    CryptocurrencyDescription,
+    UserNotifications
 }
