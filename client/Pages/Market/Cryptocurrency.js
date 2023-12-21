@@ -1,6 +1,6 @@
-import React, {useContext, useEffect, useMemo, useState} from 'react';
+import React, {useCallback, useContext, useEffect, useMemo, useRef, useState} from 'react';
+import { useIsFocused, useFocusEffect } from '@react-navigation/native';
 import {Dimensions, FlatList, Image, ScrollView, StyleSheet, Text, TouchableOpacity, View} from "react-native";
-import moc_btc from './moc_ltc_v1.json'
 import { LineChart, BarChart } from 'react-native-chart-kit';
 import {FontAwesomeIcon} from "@fortawesome/react-native-fontawesome";
 import * as Notifications from 'expo-notifications';
@@ -16,17 +16,23 @@ import {colors, cryptoDataValues, extractChangePercent, processCurrencyDataForTe
 import LoadingScreen from "../Loading";
 import Slider from '@react-native-community/slider';
 import { Table, Row, Rows } from 'react-native-table-component';
-import {deleteUserCrypto, fetchAllUserCrypto} from "../../store/cryptoStore";
+import {deleteUserCrypto, fetchAllUserCrypto, getForecastInfoForCode} from "../../store/cryptoStore";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import jwtDecode from "jwt-decode";
 import {Context} from "../../App";
+import axios from "axios";
+const INTERVAL_TIME = 100;
 
 const Cryptocurrency = ({navigation, route}) => {
     const { currencyData } = route.params;
     const itemsPerPage = 4;
     const {userCrypto} = useContext(Context)
+    const isPageFocused = useIsFocused();
+    const [shouldCancelRequest, setShouldCancelRequest] = useState(false);
 
     const [activeChartTab, setActiveChartTab] = useState('Price')
+    const [dataFromDb, setDataFromDb] = useState([])
+    const [forecastDataFromDb, setForecastDataFromDb] = useState([])
     const [priceDataValues, setPriceDataValues] = useState([])
     const [visibleCryptoDataPrice, setVisibleCryptoDataPrice] = useState([])
     const [loading, setLoading] = useState(true);
@@ -35,58 +41,116 @@ const Cryptocurrency = ({navigation, route}) => {
     const [isScrollEnabled, setIsScrollEnabled] = useState(true);
 
     const [forecastTableHead, setForecastTableHead] = useState(['Name', 'Efficiency', 'Usage', 'Usage %', 'Result']);
-    const [forecastTableData, setForecastTableData] = useState(
-        [
-            ['ARIMA', '98%', '+', '100%', '+'],
-            ['LSTM', '95%', '+', '100%', '+'],
-            ['RF', '98%', '+', '100%', '+'],
-            ['GB', '98%', '+', '100%', '+'],
-            ['NN', '96%', '+', '100%', '+'],
-            ['STK', '99%', '-', '-', '-'],
-        ]
-    );
+    const [forecastTableData, setForecastTableData] = useState([]);
+
+    const [stackTableHead, setStackTableHead] = useState(['Method', 'Result']);
+    const [stackTableData, setStackTableData] = useState([]);
 
     const [risksTableHead, setRisksTableHead] = useState(['Name', 'Result']);
-    const [risksTableData, setRisksTableData] = useState(
-        [
-            ['VaR', '-0.041243393285825415'],
-            ['ES', '0.0024771760765162766'],
-        ]
-    );
+    const [risksTableData, setRisksTableData] = useState([]);
 
     const [risksSummaryTableHead, setRisksSummaryTableHead] = useState(['Name', 'Status', 'Result']);
     const [risksSummaryTableData, setRisksSummaryTableData] = useState([]);
 
-    const responseFromSR = {
-        VaR: -0.041243393285825415,
-        ES: 0.0024771760765162766
-    };
+    const cancelTokenSourceRef = useRef(null);
+    // .get(`http://localhost:8000/api/chart/get_forecast_data/${currencyData.code}/${userId}/`)
 
-    function calculateRiskPercentages(responseData) {
-        const varPercent = Math.abs(responseData.VaR * 100).toFixed(2);
-        const esPercent = Math.abs(responseData.ES * 100).toFixed(2);
+    const updateForecast = useCallback(() => {
+        AsyncStorage.getItem('forecastPermission')
+            .then((permission) => {
+                if (permission !== 'allowed' || localStorage.getItem('isRequestPending') === 'true') {
+                    console.error('testas Permission denied or request already in progress');
+                    return;
+                }
 
-        const varThreshold = 5; // Поріг для VaR, наприклад 5%
-        const esThreshold = 3; // Поріг для ES, наприклад 3%
+                localStorage.setItem('isRequestPending', 'true');
 
-        const isVarAcceptable = varPercent < varThreshold;
-        const isEsAcceptable = esPercent < esThreshold;
+                checkToken().then((res) => {
+                    const userId = res.id;
+                    axios
+                        .get(`http://localhost:8000/api/chart/get_forecast_data/${currencyData.code}/${userId}/`)
+                        .then((res) => {
+                            if (res.data.success) {
+                                updateElementDataAfterForecast();
+                            } else {
+                                AsyncStorage.removeItem('forecastPermission');
+                            }
+                        })
+                        .catch((err) => {
+                            console.error('testas Error:', err);
+                            AsyncStorage.removeItem('forecastPermission');
+                        })
+                        .finally(() => {
+                            localStorage.removeItem('isRequestPending');
+                        });
+                });
+            });
+    }, [shouldCancelRequest]);
 
-        const varStatus = isVarAcceptable ? 'OK' : 'RISK';
-        const esStatus = isEsAcceptable ? 'OK' : 'RISK';
+    const updateElementDataAfterForecast = useCallback(() => {
+        getForecastInfoForCode(currencyData.code).then((res) => {
+            const data = res.data;
+            setDataFromDb(data);
+            setForecastDataFromDb(data.forecast)
 
-        const varMessage = `VaR: With a probability of 98%, the maximum loss will not exceed ${varPercent}% of the investment.`;
-        const esMessage = `ES: In the event that losses exceed VaR, the average size of losses can be close to ${esPercent}%.`;
+            const newForecastTableData = data.models.map((model) => {
+                const efficiency = data.modelsEfficiency[model];
+                const isUsed = data.modelsUsed.includes(model);
+                const isEfficient = efficiency >= 80; // Задовільний результат - ефективність >= 80%
+                return [
+                    model,
+                    `${efficiency.toFixed(1)}%`,
+                    isUsed ? '+' : '-',
+                    isUsed ? '100%' : '0%',
+                    isEfficient ? '+' : '-'
+                ];
+            });
+            setForecastTableData(newForecastTableData);
+            calculateRiskPercentages(data.VaR, data.ES)
 
-        setRisksSummaryTableData([
-            ['VaR', varStatus, varMessage],
-            ['ES', esStatus, esMessage]
-        ])
+            const newRisksTableData = [
+                ['VaR', data.VaR.toFixed(6)],
+                ['ES', data.ES.toFixed(6)]
+            ];
+            setRisksTableData(newRisksTableData);
+
+            const newStackTableData = [
+                ['Stacking', `${data.stackingEfficiency.toFixed(2)}%`],
+            ];
+            setStackTableData(newStackTableData);
+        })
+        .finally(() => {
+            if (!isPageFocused) {
+                if (cancelTokenSourceRef.current) {
+                    cancelTokenSourceRef.current.cancel('Request canceled due to component unmount or focus loss');
+                }
+            }
+        });
+    }, [shouldCancelRequest])
+
+    function calculateRiskPercentages(varRisk, esRisk) {
+        if (varRisk && esRisk) {
+            const varPercent = Math.abs(varRisk * 100).toFixed(2);
+            const esPercent = Math.abs(esRisk * 100).toFixed(2);
+
+            const varThreshold = 5; // Поріг для VaR, наприклад 5%
+            const esThreshold = 3; // Поріг для ES, наприклад 3%
+
+            const isVarAcceptable = varPercent < varThreshold;
+            const isEsAcceptable = esPercent < esThreshold;
+
+            const varStatus = isVarAcceptable ? 'OK' : 'RISK';
+            const esStatus = isEsAcceptable ? 'OK' : 'RISK';
+
+            const varMessage = `VaR: With a probability of 98%, the maximum loss will not exceed ${varPercent}% of the investment.`;
+            const esMessage = `ES: In the event that losses exceed VaR, the average size of losses can be close to ${esPercent}%.`;
+
+            setRisksSummaryTableData([
+                ['VaR', varStatus, varMessage],
+                ['ES', esStatus, esMessage]
+            ])
+        }
     }
-
-    const loadMore = () => {
-        setVisibleItems(prevVisibleItems => prevVisibleItems + itemsPerPage);
-    };
 
     const checkToken = async () => {
         try {
@@ -134,31 +198,34 @@ const Cryptocurrency = ({navigation, route}) => {
         navigation.navigate('Notifications');
     }
 
-    const cutChartData = useMemo(() =>
-            moc_btc.response.historical_data.slice(-sliderValue),
-        [moc_btc.response.historical_data, sliderValue]
-    );
+    const cutChartData = useMemo(() => {
+        if (dataFromDb?.historical_data) {
+            return dataFromDb.historical_data.slice(-sliderValue);
+        }
+        return [];
+    }, [dataFromDb?.historical_data, sliderValue]);
 
     const aggregatedPriceData = useMemo(() => {
-        return cutChartData.reduce((acc, item, index) => {
-            const chunkIndex = Math.floor(index / 5);
-            if (!acc[chunkIndex]) {
-                acc[chunkIndex] = { ...item, count: 1 };
-            } else {
-                acc[chunkIndex].price_close += item.price_close;
-                acc[chunkIndex].count += 1;
-            }
-            return acc;
-        }, []).map(item => item.price_close / item.count);
+        if (cutChartData) {
+            return cutChartData.reduce((acc, item, index) => {
+                const chunkIndex = Math.floor(index / 5);
+                if (!acc[chunkIndex]) {
+                    acc[chunkIndex] = { ...item, count: 1 };
+                } else {
+                    acc[chunkIndex].price_close += item.price_close;
+                    acc[chunkIndex].count += 1;
+                }
+                return acc;
+            }, []).map(item => item.price_close / item.count);
+        }
     }, [cutChartData]);
 
     useEffect(() => {
-        const timeoutId = setTimeout(() => {
-            setLoading(false);
-            calculateRiskPercentages(responseFromSR)
-        }, 1000);
-
-        return () => clearTimeout(timeoutId);
+        updateElementDataAfterForecast();
+        if (localStorage.getItem('isRequestPending') === 'true') {
+            localStorage.setItem('isRequestPending', 'false');
+        }
+        return () => {};
     }, []);
 
     useEffect(() => {
@@ -179,10 +246,47 @@ const Cryptocurrency = ({navigation, route}) => {
         return () => clearTimeout(timerId);
     }, [cutChartData]);
 
+    useEffect(() => {
+        if (loading) {
+            const timeoutId = setTimeout(() => {
+                setLoading(false);
+            }, 1000);
+
+            return () => clearTimeout(timeoutId);
+        }
+    }, [loading]);
 
     useEffect(() => {
-        setVisibleCryptoDataPrice(priceDataValues.slice(0, visibleItems));
-    }, [visibleItems, priceDataValues]);
+        console.log('testas update started');
+        AsyncStorage.setItem('forecastPermission', 'allowed');
+        updateForecast();
+
+        if (!isPageFocused) {
+            return () => {
+                console.log('testas update ended');
+                AsyncStorage.setItem('forecastPermission', 'denied');
+                setShouldCancelRequest(true);
+            };
+        }
+    }, [isPageFocused, stackTableData, updateForecast]);
+
+    // const testPing = () => {
+    //     console.log('testas pin pong', isPageFocused);
+    // };
+
+    // useEffect(() => {
+    //     const intervalId = setInterval(() => {
+    //         testPing();
+    //     }, 1000);
+    //
+    //     return () => {
+    //         clearInterval(intervalId);
+    //     };
+    // }, [isPageFocused]);
+    //
+    // useEffect(() => {
+    //     setVisibleCryptoDataPrice(priceDataValues.slice(0, visibleItems));
+    // }, [visibleItems, priceDataValues]);
 
     const handleNavigateBack = () => {
         navigation.navigate('Market');
@@ -203,14 +307,21 @@ const Cryptocurrency = ({navigation, route}) => {
 
 
     // Прогнозний Графік:
-    const futurePriceData = {
-        historical: aggregatedPriceData,
-        forecast: moc_btc.response.forecast.slice(-30).reverse(),
-    };
+    let futurePriceData = {}
+    if (forecastDataFromDb.length > 0) {
+        futurePriceData = {
+            historical: aggregatedPriceData,
+            forecast: forecastDataFromDb.slice(-30),
+        };
+    } else {
+        futurePriceData = {
+            historical: [],
+            forecast: [],
+        };
+    }
 
     // Графік Ризиків:
     const risksData = cutChartData.map(item => item.risk);
-
 
     const Chart = ({ activeTab }) => {
         const chartConfig = {
@@ -495,6 +606,19 @@ const Cryptocurrency = ({navigation, route}) => {
                             <Table borderStyle={{borderWidth: 2, borderColor: colors.mainDarkPurple}}>
                                 <Row data={forecastTableHead} style={styles.forecastTableHead} textStyle={styles.forecastTableHeadText}/>
                                 <Rows data={forecastTableData} textStyle={styles.forecastTableText}/>
+                            </Table>
+                        </View>
+                    </View>
+
+                    <View style={styles.riskDetailsTextBlock}>
+                        <Text style={styles.riskDetailsText}>Stacking details</Text>
+                    </View>
+
+                    <View style={styles.cryptoForecastInfoContainer}>
+                        <View style={styles.forecastTableContainer}>
+                            <Table borderStyle={{borderWidth: 2, borderColor: colors.mainDarkPurple}}>
+                                <Row data={stackTableHead} style={styles.forecastTableHead} textStyle={styles.forecastTableHeadText}/>
+                                <Rows data={stackTableData} textStyle={styles.forecastTableText}/>
                             </Table>
                         </View>
                     </View>

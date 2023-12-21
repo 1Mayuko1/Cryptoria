@@ -55,6 +55,15 @@ class UserCryptocurrenciesController {
         }
     }
 
+    async deleteAll(req, res, next) {
+        try {
+            await UserNotifications.destroy({ where: {} });
+            return res.status(200).json({ message: 'All noty deleted successfully' });
+        } catch (e) {
+            return next(ApiError.badRequest(e.message));
+        }
+    }
+
     async getAll(req, res){
         const userCrypto = await UserNotifications.findAll()
         return res.json(userCrypto)

@@ -35,3 +35,12 @@ export const addUserCrypto = async (userId, cryptocurrencyCode, count = 1) => {
         throw error;
     }
 };
+
+export const getForecastInfoForCode = async (cryptoCode) => {
+    try {
+        const response = await $host.get(`api/forecastData/${cryptoCode}`);
+        return response.data;
+    } catch (error) {
+        console.log('testas Error from axios', error);
+    }
+};
