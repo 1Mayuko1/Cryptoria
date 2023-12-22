@@ -1,13 +1,12 @@
 import React, {useContext, useEffect, useState} from 'react';
 import * as RNComponents from "react-native";
-import {Dimensions, FlatList, Image, ScrollView, StyleSheet, Text, TouchableOpacity, View} from "react-native";
+import {Dimensions, FlatList, ScrollView, StyleSheet, Text, TouchableOpacity, View} from "react-native";
 import {colors, cryptoDataValues, extractChangePercent, processCurrencyDataForText} from "../../constants/helpers";
 import {FontAwesomeIcon} from "@fortawesome/react-native-fontawesome";
 import {faArrowDown, faArrowUp, faCube} from "@fortawesome/free-solid-svg-icons";
-import moc_btc from "./moc_ltc_v1.json";
 import {LineChart} from "react-native-chart-kit";
 import LoadingScreen from "../Loading";
-import {addUserCrypto, deleteUserCrypto, fetchAllUserCrypto} from "../../store/cryptoStore";
+import {addUserCrypto, deleteUserCrypto, fetchAllUserCrypto, getHistoricalData} from "../../store/cryptoStore";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import jwtDecode from "jwt-decode";
 import {Context} from "../../App";
@@ -15,10 +14,18 @@ import {Context} from "../../App";
 const CryptoItemInfo = ({navigation, route}) => {
     const { currencyData } = route.params;
     const itemsPerPage = 3;
-    const lastDay = moc_btc.response.historical_data.slice(-15);
-    const lastWeek = moc_btc.response.historical_data.slice(-30);
-    const lastMonth = moc_btc.response.historical_data.slice(-60);
+    const [historicalDbData, setHistoricalDbData] = useState([])
+
+    let lastDay = []
+    let lastWeek = []
+    let lastMonth = []
+
+    if (historicalDbData && historicalDbData.length > 0) {
+
+    }
+
     const [sortTimeMenuVisible, setSortTimeMenuVisible] = useState(false);
+    const [currentPrice, setCurrentPrice] = useState({ price: '', percent: '' });
     const [sortTimeMenuOption, setSortTimeMenuOption] = useState('Today');
     const [buySellSorting, setBuySellSorting] = useState('Add');
     const [chartData, setChartData] = useState(lastDay);
@@ -43,6 +50,37 @@ const CryptoItemInfo = ({navigation, route}) => {
         }
     }
 
+    const calculatePriceChange = (res) => {
+        if (res.length < 2) {
+            return { price: '', percent: '' };
+        }
+
+        const lastElement = res[res.length - 1];
+        const secondLastElement = res[res.length - 2];
+
+        const priceChange = lastElement.price_close - secondLastElement.price_close;
+        const percentChange = (priceChange / secondLastElement.price_close) * 100;
+
+        const percentString = `${percentChange >= 0 ? '+' : ''}${percentChange.toFixed(2)}%`;
+
+        return {
+            price: lastElement.price_close.toFixed(2),
+            percent: percentString
+        };
+    }
+
+    useEffect(() => {
+        checkToken().then((res) => {
+            const userId = res.id;
+            getHistoricalData(currencyData.code).then((res) => {
+                setHistoricalDbData(res)
+                setChartData(res.data.slice(-15))
+
+                setCurrentPrice(calculatePriceChange(res.data))
+            })
+        });
+    }, [])
+
     useEffect(() => {
         setTimeout(() => {
             setLoading(false);
@@ -54,7 +92,7 @@ const CryptoItemInfo = ({navigation, route}) => {
     }, [visibleItems, priceDataValues]);
 
     const priceDataFromChart = chartData.map(item => ({
-        date: item.date,
+        date: item.time_close,
         shadowH: item.price_high,
         shadowL: item.price_low,
         open: item.price_open,
@@ -72,21 +110,20 @@ const CryptoItemInfo = ({navigation, route}) => {
         switch (sortTimeMenuOption) {
             case 'Today':
                 setSortTimeMenuOption('Week')
-                setChartData(lastWeek)
+                setChartData(historicalDbData.data.slice(-30))
                 break;
             case 'Week':
                 setSortTimeMenuOption('Month')
-                setChartData(lastMonth)
+                setChartData(historicalDbData.data.slice(-60))
                 break;
             case 'Month':
                 setSortTimeMenuOption('Today')
-                setChartData(lastDay)
+                setChartData(historicalDbData.data.slice(-15))
                 break;
         }
     }
 
     const handleClickBuyButton = (option) => {
-        console.log('clicked Buy')
         checkToken().then((res) => {
             addUserCrypto(res.id, currencyData.code, 1).then(response => {
                 console.log('testas', response)
@@ -96,7 +133,6 @@ const CryptoItemInfo = ({navigation, route}) => {
     }
 
     const handleClickSellButton = (option) => {
-        console.log('clicked Sell')
         checkToken().then((res) => {
             deleteUserCrypto(res.id, currencyData.code).then(async (r) => {
                 const fullUserData = []
@@ -197,23 +233,20 @@ const CryptoItemInfo = ({navigation, route}) => {
                             <View style={styles.headerTextBlock}>
                                 <View>
                                     <RNComponents.Text
-                                        style={styles.headerNameCountText}>{`1.05 ${currencyData.code}`}</RNComponents.Text>
+                                        style={styles.headerNameCountText}>{`${currencyData.code}`}</RNComponents.Text>
                                 </View>
                                 <View style={styles.headerPricePercentText}>
                                     <View>
                                         <RNComponents.Text style={styles.headerUsdText}>USD</RNComponents.Text>
                                     </View>
                                     <View>
-                                        <RNComponents.Text
-                                            style={styles.headerPriceText}>{currencyData.price}</RNComponents.Text>
+                                        <RNComponents.Text style={styles.headerPriceText}>
+                                            {currentPrice.price}
+                                        </RNComponents.Text>
                                     </View>
                                     <View>
                                         <RNComponents.Text style={styles.headerPercentText}>
-                                            {
-                                                currencyData.change.startsWith('+') ?
-                                                    '+' + extractChangePercent(currencyData.change) + '%' :
-                                                    '-' + extractChangePercent(currencyData.change) + '%'
-                                            }
+                                            {currentPrice.percent}
                                         </RNComponents.Text>
                                     </View>
                                 </View>
@@ -268,18 +301,18 @@ const CryptoItemInfo = ({navigation, route}) => {
                         <View style={styles.chartHeaderCodes}>
                             <Text style={styles.chartHeaderCodeText}>{`USD / ${currencyData.code}`}</Text>
                         </View>
-                        <View style={styles.chartHeaderWrapperPriceContainer}>
-                            <View style={styles.chartHeaderWrapperPriceBlock}>
-                                <Text style={styles.chartHeaderCodesText}>{`$${priceDataValues[0].priceNumber.slice(1)}`}</Text>
-                            </View>
-                            <View style={styles.chartHeaderPriceText}>
-                                {
-                                    priceDataValues[0].priceNumber.startsWith('-') ?
-                                        <Text style={styles.redPriceChart}>{`${priceDataValues[0].pricePercent}`}</Text> :
-                                        <Text style={styles.greenPriceChart}>{`${priceDataValues[0].pricePercent}`}</Text>
-                                }
-                            </View>
-                        </View>
+                        {/*<View style={styles.chartHeaderWrapperPriceContainer}>*/}
+                        {/*    <View style={styles.chartHeaderWrapperPriceBlock}>*/}
+                        {/*        <Text style={styles.chartHeaderCodesText}>{`$${priceDataValues[0].priceNumber.slice(1)}`}</Text>*/}
+                        {/*    </View>*/}
+                        {/*    <View style={styles.chartHeaderPriceText}>*/}
+                        {/*        {*/}
+                        {/*            priceDataValues[0].priceNumber.startsWith('-') ?*/}
+                        {/*                <Text style={styles.redPriceChart}>{`${priceDataValues[0].pricePercent}`}</Text> :*/}
+                        {/*                <Text style={styles.greenPriceChart}>{`${priceDataValues[0].pricePercent}`}</Text>*/}
+                        {/*        }*/}
+                        {/*    </View>*/}
+                        {/*</View>*/}
                     </View>
 
                     <View>
@@ -323,7 +356,7 @@ const CryptoItemInfo = ({navigation, route}) => {
                                         </View>
                                     </View>
                                 )}
-                                keyExtractor={(item) => item.date}
+                                keyExtractor={(item) => item.date.toString() + item.priceNumber.toString()}
                             />
                         </View>
                         {visibleItems < priceDataValues.length && (

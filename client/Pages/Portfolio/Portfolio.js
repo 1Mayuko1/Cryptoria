@@ -17,6 +17,7 @@ import { useIsFocused } from '@react-navigation/native';
 
 const Portfolio = observer(({navigation}) => {
     const itemsPerPage = 2;
+    const [cardCountData, setCardCountData] = useState({price: '', change: ''});
     const [visibleItems, setVisibleItems] = useState(itemsPerPage);
     const [cryptoDataPortfolio, setCryptoDataPortfolio] = useState([]);
     const {user} = useContext(Context)
@@ -34,6 +35,31 @@ const Portfolio = observer(({navigation}) => {
         }
     }
 
+    const calculateTotalPriceAndAbsoluteChange = (data) => {
+        let totalPrice = 0;
+        let totalChange = 0;
+        if (data && data.length > 0) {
+            data.forEach(item => {
+                const price = parseFloat(item.price.replace(/[^0-9.-]+/g,""));
+                const changeMatch = item.change.match(/[+-]?\$([0-9.,]+)/);
+                const absoluteChange = changeMatch ? parseFloat(changeMatch[1].replace(/,/g, "")) : 0;
+                if (item.change.includes('-')) {
+                    totalChange -= absoluteChange;
+                } else {
+                    totalChange += absoluteChange;
+                }
+                totalPrice += price;
+            });
+            setCardCountData({
+                price: totalPrice.toFixed(2),
+                // change: `${totalChange >= 0 ? '+' : ''}$${totalChange.toFixed(2)}`
+                change: totalChange.toFixed(2)
+            })
+        } else {
+            return setCardCountData({price: '', change: ''})
+        }
+    }
+
     const loadData = async (userId) => {
         try {
             let fullUserData = []
@@ -45,6 +71,7 @@ const Portfolio = observer(({navigation}) => {
                 }
             });
 
+            calculateTotalPriceAndAbsoluteChange(fullUserData)
             setCryptoDataPortfolio(fullUserData)
             userCrypto.setUserCrypto(fullUserData)
         } catch (error) {
@@ -182,17 +209,17 @@ const Portfolio = observer(({navigation}) => {
                                 <Text style={styles.balanceText}>Balance</Text>
                             </View>
                             <View style={styles.topCardBalanceTextBlock}>
-                                <Text style={styles.sumText}>$ 75,854</Text>
+                                <Text style={styles.sumText}>{`$${cardCountData.price}`}</Text>
                             </View>
                         </View>
 
                         <View style={styles.bottomCardBalanceContainer}>
                             <View style={styles.bottomLeftCardBalanceContainer}>
                                 <View style={styles.bottomLeftCardBalanceBlock}>
-                                    <Text style={styles.monthlyProfitText}>Monthly profit</Text>
+                                    <Text style={styles.monthlyProfitText}>Profit</Text>
                                 </View>
                                 <View style={styles.bottomLeftCardBalanceBlock}>
-                                    <Text style={styles.monthlyPrice}>$ 4,579</Text>
+                                    <Text style={styles.monthlyPrice}>{`$${cardCountData.change}`}</Text>
                                 </View>
                             </View>
 
@@ -239,7 +266,8 @@ const Portfolio = observer(({navigation}) => {
                                 getPortfolioData() && getPortfolioData().map((el, idx) => {
                                     return (
                                         <MiniPortfolioCard
-                                            idx={idx}
+                                            id={idx.toString() + el.name}
+                                            idx={idx.toString() + el.name}
                                             name={el.name}
                                             code={el.code}
                                             price={el.price}

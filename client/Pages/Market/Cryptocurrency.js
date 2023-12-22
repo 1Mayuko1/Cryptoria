@@ -1,5 +1,5 @@
 import React, {useCallback, useContext, useEffect, useMemo, useRef, useState} from 'react';
-import { useIsFocused, useFocusEffect } from '@react-navigation/native';
+import { useIsFocused } from '@react-navigation/native';
 import {Dimensions, FlatList, Image, ScrollView, StyleSheet, Text, TouchableOpacity, View} from "react-native";
 import { LineChart, BarChart } from 'react-native-chart-kit';
 import {FontAwesomeIcon} from "@fortawesome/react-native-fontawesome";
@@ -16,7 +16,12 @@ import {colors, cryptoDataValues, extractChangePercent, processCurrencyDataForTe
 import LoadingScreen from "../Loading";
 import Slider from '@react-native-community/slider';
 import { Table, Row, Rows } from 'react-native-table-component';
-import {deleteUserCrypto, fetchAllUserCrypto, getForecastInfoForCode} from "../../store/cryptoStore";
+import {
+    deleteUserCrypto,
+    fetchAllUserCrypto,
+    getForecastInfoForCode,
+    getUserNotifications
+} from "../../store/cryptoStore";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import jwtDecode from "jwt-decode";
 import {Context} from "../../App";
@@ -29,6 +34,9 @@ const Cryptocurrency = ({navigation, route}) => {
     const {userCrypto} = useContext(Context)
     const isPageFocused = useIsFocused();
     const [shouldCancelRequest, setShouldCancelRequest] = useState(false);
+
+    const [allNotyData, setAllNotyData] = useState([]);
+    const [notyCountToOpen, setNotyCountToOpen] = useState(0);
 
     const [activeChartTab, setActiveChartTab] = useState('Price')
     const [dataFromDb, setDataFromDb] = useState([])
@@ -270,23 +278,46 @@ const Cryptocurrency = ({navigation, route}) => {
         }
     }, [isPageFocused, stackTableData, updateForecast]);
 
-    // const testPing = () => {
-    //     console.log('testas pin pong', isPageFocused);
-    // };
+    useEffect(() => {
+        AsyncStorage.setItem('allowGetNotyFromCrypto', 'true');
 
-    // useEffect(() => {
-    //     const intervalId = setInterval(() => {
-    //         testPing();
-    //     }, 1000);
-    //
-    //     return () => {
-    //         clearInterval(intervalId);
-    //     };
-    // }, [isPageFocused]);
-    //
-    // useEffect(() => {
-    //     setVisibleCryptoDataPrice(priceDataValues.slice(0, visibleItems));
-    // }, [visibleItems, priceDataValues]);
+        return () => {
+            AsyncStorage.setItem('allowGetNotyFromCrypto', 'false');
+            AsyncStorage.setItem('allNotyDataLen', allNotyData.length);
+        };
+    }, []);
+
+    useEffect(() => {
+        const fetchDataForAllUserNoty = async () => {
+            const allowGetNoty = await AsyncStorage.getItem('allowGetNotyFromCrypto');
+            const currentNotyLen = await AsyncStorage.getItem('allNotyDataLen');
+            if (allowGetNoty === 'true' && isPageFocused) {
+                checkToken().then((res) => {
+                    const userId = res.id;
+                    getUserNotifications(userId).then((notyRes) => {
+                        setAllNotyData(notyRes)
+                        if (!currentNotyLen) {
+                            AsyncStorage.setItem('allNotyDataLen', notyRes.length);
+                        }
+                        if (currentNotyLen) {
+                            let countResult = notyRes.length - +currentNotyLen
+                            setNotyCountToOpen(countResult)
+                        }
+                    }).catch((e) => {
+                        console.log('error when fetchDataForAllUserNoty', e)
+                    });
+                });
+            }
+        };
+
+        fetchDataForAllUserNoty();
+        const interval = setInterval(fetchDataForAllUserNoty, 5000);
+
+        return () => {
+            AsyncStorage.setItem('allNotyDataLen', allNotyData.length);
+            clearInterval(interval)
+        };
+    }, [isPageFocused]);
 
     const handleNavigateBack = () => {
         navigation.navigate('Market');
@@ -517,6 +548,12 @@ const Cryptocurrency = ({navigation, route}) => {
                             <TouchableOpacity onPress={goToRisks}>
                                 <View style={styles.cryptoIconBlock}>
                                     <FontAwesomeIcon style={styles.cryptoIcon} icon={faUser} />
+                                    {
+                                        notyCountToOpen !== 0 ?
+                                            <View style={styles.notificationBadge}>
+                                                <Text style={styles.notificationText}>{notyCountToOpen}</Text>
+                                            </View> : null
+                                    }
                                 </View>
                             </TouchableOpacity>
                         </View>
@@ -683,6 +720,7 @@ const styles = StyleSheet.create({
         flexDirection: "row",
     },
     cryptoIconBlock: {
+        position: 'relative',
         display: "flex",
         justifyContent: "center",
         alignItems: "center",
@@ -698,6 +736,21 @@ const styles = StyleSheet.create({
         shadowRadius: 4,
         elevation: 6,
         backgroundColor: colors.mainWhite
+    },
+    notificationBadge: {
+        position: 'absolute',
+        top: -5,
+        right: -5,
+        backgroundColor: colors.mainRed,
+        borderRadius: 10,
+        width: 18,
+        height: 18,
+        justifyContent: 'center',
+        alignItems: 'center',
+    },
+    notificationText: {
+        color: 'white',
+        fontSize: 11,
     },
     cryptoIcon: {
         outlineStyle: 'none'

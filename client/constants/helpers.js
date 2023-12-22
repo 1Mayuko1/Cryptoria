@@ -19,6 +19,7 @@ export const colors = {
     mainDarkBlue: '#627eeb',
     mainDeepDark: '#293474',
     mainColor: '#728ced',
+    mainOrange: '#ff8c69',
 }
 
 export const BtnTheme = {
@@ -316,25 +317,28 @@ export const processCurrencyDataForText = (data) => {
         const previous = data[i - 1] || null;
         const priceSuccess = previous ? current.close > previous.close : false;
 
-        const date = new Date(current.date);
-        const options = {
-            month: 'long',
-            day: 'numeric',
-            hour: 'numeric',
-            minute: '2-digit',
-            hour12: true
-        };
+        const convertDate = (dateString) => {
+            const dateObj = new Date(dateString);
+            return dateObj.toLocaleString('uk-UA', {
+                year: 'numeric',
+                month: '2-digit',
+                day: '2-digit',
+                hour: '2-digit',
+                minute: '2-digit',
+                second: '2-digit',
+                hour12: false,
+                timeZone: 'Europe/Kiev'
+            });
+        }
 
-        date.setFullYear(2024);
-        const formattedDate = date.toLocaleDateString('en-US', options);
-        const formattedTime = date.toLocaleTimeString('en-US', options);
+        let currentElementData = convertDate(current.date)
 
         const pricePercent = previous ? ((current.close - previous.close) / previous.close * 100).toFixed(2) : 0;
         const priceNumber = previous ? (current.close - previous.close).toFixed(3) : 0;
 
         processedData.push({
             priceSuccess,
-            date: formattedDate,
+            date: currentElementData,
             pricePercent: `${pricePercent}%`,
             priceNumber: `${priceNumber > 0 ? '+' : ''}${priceNumber}`
         });

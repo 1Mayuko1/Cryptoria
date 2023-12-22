@@ -12,13 +12,14 @@ class HistoricalDataController {
                     },
                 });
                 if (createdData) {
-                    return res.json({message: 'Already exist info'});
+                    await createdData.update({ cryptocurrencyId, data, date });
+                    return res.json(createdData);
                 } else {
                     const cryptocurrencyData = await HistoricalData.create({cryptocurrencyId, date, data, cryptoCode})
                     return res.json(cryptocurrencyData);
                 }
             } else {
-                return next(ApiError.badRequest(`Some fields did not exist -- ${cryptocurrencyId} -- ${date} -- ${JSON.stringify(data)} -- ${cryptoCode} -->`));
+                return next(ApiError.badRequest(`Some fields did not exist`));
                 // return next(ApiError.badRequest('Some fields did not exist', [{cryptocurrencyId: cryptocurrencyId, cryptoCode: cryptoCode, date: date, data: data}]))
             }
         } catch (e) {
@@ -37,7 +38,12 @@ class HistoricalDataController {
         if (cryptocurrency) {
             return res.json(cryptocurrency)
         } else {
-            return next(ApiError.badRequest('Not found that cryptocurrency data by id'))
+            const cryptocurrencyMocData = await HistoricalData.findOne({where: {cryptoCode: 'LTC'}});
+            if (cryptocurrencyMocData) {
+                return res.json(cryptocurrencyMocData)
+            } else {
+                return next(ApiError.badRequest('Not found that cryptocurrency data by id'))
+            }
         }
     }
 

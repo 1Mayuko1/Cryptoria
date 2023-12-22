@@ -44,3 +44,40 @@ export const getForecastInfoForCode = async (cryptoCode) => {
         console.log('testas Error from axios', error);
     }
 };
+
+export const getHistoricalData = async (code) => {
+    try {
+        const response = await $host.get(`api/historicalData/${code}`);
+        return response.data;
+    } catch (error) {
+        console.log('testas Error from axios', error);
+    }
+};
+
+export const getUserNotifications = async (userId) => {
+    try {
+        const response = await $host.get(`api/userNotifications/${userId}`);
+        return response.data;
+    } catch (error) {
+        console.log('testas Error from axios (getUserNotifications)', error);
+    }
+};
+
+export const deleteAllUserNotifications = async () => {
+    try {
+        return await $host.delete(`api/userNotifications/deleteAll`);
+    } catch (error) {
+        console.log('testas Error from axios (deleteAllUserNotifications)', error);
+    }
+};
+
+export const deleteOneUserNotification = async (userId, id) => {
+    try {
+        return await $host.delete(`api/userNotifications`, {
+            userId,
+            id
+        });
+    } catch (error) {
+        console.log('testas Error from axios (deleteOneUserNotification)', error);
+    }
+};
