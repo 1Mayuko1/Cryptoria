@@ -115,7 +115,6 @@ const Portfolio = observer(({navigation}) => {
             currencyData: item
         });
     }
-
     const MiniPortfolioCard = ({ idx, code, price, change, img, fullItemData}) => {
         return (
             <TouchableOpacity onPress={() => handleNavigateToCryptocurrency(fullItemData)} key={idx}>

@@ -267,11 +267,14 @@ const Cryptocurrency = ({navigation, route}) => {
     useEffect(() => {
         console.log('testas update started');
         AsyncStorage.setItem('forecastPermission', 'allowed');
-        updateForecast();
+        const timeoutIdForUpdate = setTimeout(() => {
+            updateForecast();
+        }, 12000);
 
         if (!isPageFocused) {
             return () => {
                 console.log('testas update ended');
+                clearTimeout(timeoutIdForUpdate);
                 AsyncStorage.setItem('forecastPermission', 'denied');
                 setShouldCancelRequest(true);
             };

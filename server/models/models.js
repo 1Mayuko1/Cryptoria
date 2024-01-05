@@ -63,29 +63,21 @@ const HistoricalData = sequelize.define('historicalData', {
 UserCryptocurrencies.belongsTo(Cryptocurrency, { foreignKey: 'cryptocurrencyId', as: 'cryptocurrency' });
 Cryptocurrency.hasMany(UserCryptocurrencies, { foreignKey: 'cryptocurrencyId' });
 
-// Встановлення зв'язків між таблицями
-
-// User to UserCryptocurrencies (One-to-Many)
 User.hasMany(UserCryptocurrencies, { foreignKey: 'userId' });
 UserCryptocurrencies.belongsTo(User, { foreignKey: 'userId' });
 
-// User to UserNotifications (One-to-Many)
 User.hasMany(UserNotifications, { foreignKey: 'userId' });
 UserNotifications.belongsTo(User, { foreignKey: 'userId' });
 
-// Cryptocurrency to UserCryptocurrencies (One-to-Many)
 Cryptocurrency.hasMany(UserCryptocurrencies, { foreignKey: 'cryptocurrencyId' });
 UserCryptocurrencies.belongsTo(Cryptocurrency, { foreignKey: 'cryptocurrencyId' });
 
-// Cryptocurrency to ExchangeRates (One-to-Many)
 Cryptocurrency.hasMany(ExchangeRates, { foreignKey: 'cryptocurrencyId' });
 ExchangeRates.belongsTo(Cryptocurrency, { foreignKey: 'cryptocurrencyId' });
 
-// Cryptocurrency to CryptocurrencyDescription (One-to-Many)
 Cryptocurrency.hasMany(CryptocurrencyDescription, { foreignKey: 'cryptocurrencyId', as: 'info' });
 CryptocurrencyDescription.belongsTo(Cryptocurrency, { foreignKey: 'cryptocurrencyId' });
 
-// Cryptocurrency to ForecastData (One-to-Many)
 Cryptocurrency.hasMany(ForecastData, { foreignKey: 'cryptocurrencyId' });
 ForecastData.belongsTo(Cryptocurrency, { foreignKey: 'cryptocurrencyId' });
 
